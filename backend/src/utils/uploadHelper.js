@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { config } = require('../config/env');
 const path = require('path');
-const { v4: uuidv4 } = require('crypto');
+const crypto = require('crypto');
 
 let supabase = null;
 
