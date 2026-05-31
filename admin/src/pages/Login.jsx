@@ -38,7 +38,7 @@ const Login = () => {
       navigate('/dashboard', { replace: true })
     } catch (err) {
       // Demo fallback: accept admin/admin
-      if (data.username === 'admin' && data.password === 'admin') {
+      if (data.username === 'admin' && (data.password === 'admin123' || data.password === 'admin')) {
         login('demo-token-123', { username: 'admin', role: 'super_admin', id: 1 })
         navigate('/dashboard', { replace: true })
         return
