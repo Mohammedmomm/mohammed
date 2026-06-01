@@ -20,12 +20,13 @@ const BrandModal = ({ brand, onSave, onClose }) => {
   const handleSave = async () => {
     if (!form.name_ar || !form.name_en) { toast.error('الاسم مطلوب'); return }
     setSaving(true)
+    const payload = { ...form, name: form.name_en }
     try {
       if (brand?.id) {
-        await axiosInstance.put(`/brands/${brand.id}`, form)
+        await axiosInstance.put(`/brands/${brand.id}`, payload)
         toast.success(t('brands.editBrand') + ' ✓')
       } else {
-        await axiosInstance.post('/brands', form)
+        await axiosInstance.post('/brands', payload)
         toast.success(t('brands.addBrand') + ' ✓')
       }
       onSave()
@@ -121,7 +122,7 @@ const Brands = () => {
 
   const toggleActive = async (id) => {
     try {
-      await axiosInstance.patch(`/brands/${id}/toggle`)
+      await axiosInstance.patch(`/brands/${id}/toggle-active`)
       fetchBrands()
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تغيير الحالة')
