@@ -87,7 +87,8 @@ const Brands = () => {
     setLoading(true)
     try {
       const res = await axiosInstance.get('/brands')
-      setBrands(res.data.data || [])
+      const d = res.data.data
+      setBrands(Array.isArray(d) ? d : (d?.data || []))
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تحميل الماركات')
     } finally {
