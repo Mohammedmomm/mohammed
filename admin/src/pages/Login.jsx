@@ -33,17 +33,12 @@ const Login = () => {
     setLoading(true)
     try {
       const res = await apiLogin(data.username, data.password)
-      const { token, admin } = res.data
+      const { token, admin } = res.data.data
       login(token, admin)
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      // Demo fallback: accept admin/admin
-      if (data.username === 'admin' && (data.password === 'admin123' || data.password === 'admin')) {
-        login('demo-token-123', { username: 'admin', role: 'super_admin', id: 1 })
-        navigate('/dashboard', { replace: true })
-        return
-      }
-      toast.error(t('auth.wrongCredentials'))
+      const msg = err?.response?.data?.error || t('auth.wrongCredentials')
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
