@@ -121,8 +121,8 @@ const ProductForm = () => {
       }
       navigate('/products')
     } catch (err) {
-      toast.success(isEdit ? t('products.productUpdated') : t('products.productCreated'))
-      navigate('/products')
+      const msg = err?.response?.data?.error || 'حدث خطأ، حاول مجدداً'
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
