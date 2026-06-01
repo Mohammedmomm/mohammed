@@ -72,7 +72,7 @@ const Dashboard = () => {
         axiosInstance.get('/categories/flat'),
         axiosInstance.get('/brands'),
         axiosInstance.get('/ads'),
-        axiosInstance.get('/exchange-rate'),
+        axiosInstance.get('/exchange-rate/current'),
         axiosInstance.get('/products?sort=popular&limit=10'),
       ])
 
@@ -97,7 +97,7 @@ const Dashboard = () => {
         ? `${Number(exchangeRateRaw).toLocaleString()} ل.س`
         : '-'
 
-      const rawProducts = getValue(results[6], (r) => r.data.data.products, [])
+      const rawProducts = getValue(results[6], (r) => r.data.data.products, []) || []
       const mappedProducts = rawProducts.map((p, i) => ({
         rank: i + 1,
         name_ar: p.name_ar || p.name || '-',
