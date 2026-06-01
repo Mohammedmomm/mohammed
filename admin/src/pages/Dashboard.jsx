@@ -139,8 +139,8 @@ const Dashboard = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          <StatCard title={t('dashboard.totalProducts')} value={stats.totalProducts.toLocaleString()} icon={Package} trend={5} color="#1E6FBF" />
-          <StatCard title={t('dashboard.available')} value={stats.available.toLocaleString()} icon={CheckCircle} trend={3} color="#22C55E" />
+          <StatCard title={t('dashboard.totalProducts')} value={(stats.totalProducts || 0).toLocaleString()} icon={Package} trend={5} color="#1E6FBF" />
+          <StatCard title={t('dashboard.available')} value={(stats.available || 0).toLocaleString()} icon={CheckCircle} trend={3} color="#22C55E" />
           <StatCard title={t('dashboard.categoriesCount')} value={stats.categoriesCount} icon={FolderTree} color="#8B5CF6" />
           <StatCard title={t('dashboard.brandsCount')} value={stats.brandsCount} icon={Tag} color="#F47920" />
           <StatCard title={t('dashboard.activeAds')} value={stats.activeAds} icon={Megaphone} trend={2} color="#F59E0B" />
