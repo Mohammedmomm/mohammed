@@ -9,6 +9,7 @@ import axiosInstance from '../api/axiosInstance'
 const BrandModal = ({ brand, onSave, onClose }) => {
   const { t } = useTranslation()
   const [form, setForm] = useState({
+    name: brand?.name || brand?.name_en || '',
     name_ar: brand?.name_ar || '',
     name_en: brand?.name_en || '',
     logo_url: brand?.logo_url || '',
