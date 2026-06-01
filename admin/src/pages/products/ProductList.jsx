@@ -1,25 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Search, LayoutGrid, List, Edit2, Trash2, Filter } from 'lucide-react'
+import { Plus, Search, LayoutGrid, List, Edit2, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/shared/PageHeader'
 import DataTable from '../../components/shared/DataTable'
 import ConfirmDialog from '../../components/shared/ConfirmDialog'
-import { deleteProduct, toggleAvailable, toggleFeatured } from '../../api/products'
-
-const mockProducts = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  name_ar: ['كابل HDMI 4K سامسونج', 'مقبس USB-C', 'سلك شبكة CAT6', 'محول HDMI VGA', 'كابل AUX 3.5mm', 'جهاز بث WiFi'][i % 6],
-  name_en: ['Samsung 4K HDMI Cable', 'USB-C Plug', 'CAT6 Network Cable', 'HDMI VGA Adapter', 'AUX Cable 3.5mm', 'WiFi Adapter'][i % 6],
-  category: { name_ar: ['كابلات', 'مقابس', 'شبكات', 'محولات', 'صوت', 'شبكات'][i % 6] },
-  brand: { name_en: ['Samsung', 'Anker', 'TP-Link', 'Ugreen', 'JBL', 'TP-Link'][i % 6] },
-  price_syp: (i + 1) * 2500 + 5000,
-  price_usd: ((i + 1) * 2500 + 5000) / 13500,
-  is_available: i % 3 !== 2,
-  is_featured: i % 5 === 0,
-  image_url: null,
-}))
+import axiosInstance from '../../api/axiosInstance'
 
 const Toggle = ({ checked, onChange }) => (
   <button
@@ -35,35 +22,60 @@ const Toggle = ({ checked, onChange }) => (
 const ProductList = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [products, setProducts] = useState(mockProducts)
-  const [loading, setLoading] = useState(false)
+  const [products, setProducts] = useState([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list')
   const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('')
+  const [brand, setBrand] = useState('')
+  const [available, setAvailable] = useState('')
   const [selected, setSelected] = useState([])
   const [deleteId, setDeleteId] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [page, setPage] = useState(1)
-  const limit = 10
+  const [categories, setCategories] = useState([])
+  const [brands, setBrands] = useState([])
+  const limit = 24
 
-  const filtered = products.filter(
-    (p) =>
-      !search ||
-      p.name_ar.includes(search) ||
-      p.name_en.toLowerCase().includes(search.toLowerCase())
-  )
+  // Fetch filter options
+  useEffect(() => {
+    axiosInstance.get('/categories/flat').then((res) => setCategories(res.data.data || [])).catch(() => {})
+    axiosInstance.get('/brands').then((res) => setBrands(res.data.data || [])).catch(() => {})
+  }, [])
 
-  const paginated = filtered.slice((page - 1) * limit, page * limit)
+  const fetchProducts = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await axiosInstance.get('/products', {
+        params: { page, limit, category, brand, available, q: search },
+      })
+      const d = res.data.data
+      if (d && d.items) {
+        setProducts(d.items)
+        setTotal(d.pagination?.total || d.items.length)
+      } else {
+        setProducts(d || [])
+        setTotal((d || []).length)
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحميل المنتجات')
+    } finally {
+      setLoading(false)
+    }
+  }, [page, limit, category, brand, available, search])
+
+  useEffect(() => { fetchProducts() }, [fetchProducts])
 
   const handleDelete = async () => {
     if (!deleteId) return
     setDeleting(true)
     try {
-      await deleteProduct(deleteId)
-      setProducts((prev) => prev.filter((p) => p.id !== deleteId))
+      await axiosInstance.delete(`/products/${deleteId}`)
       toast.success(t('products.productDeleted'))
-    } catch {
-      setProducts((prev) => prev.filter((p) => p.id !== deleteId))
-      toast.success(t('products.productDeleted'))
+      fetchProducts()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل الحذف')
     } finally {
       setDeleting(false)
       setDeleteId(null)
@@ -71,21 +83,21 @@ const ProductList = () => {
   }
 
   const handleToggleAvailable = async (id) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, is_available: !p.is_available } : p))
-    )
     try {
-      await toggleAvailable(id)
-    } catch {}
+      await axiosInstance.patch(`/products/${id}/toggle-available`)
+      fetchProducts()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تغيير الحالة')
+    }
   }
 
   const handleToggleFeatured = async (id) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, is_featured: !p.is_featured } : p))
-    )
     try {
-      await toggleFeatured(id)
-    } catch {}
+      await axiosInstance.patch(`/products/${id}/toggle-featured`)
+      fetchProducts()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تغيير الحالة')
+    }
   }
 
   const columns = [
@@ -160,7 +172,7 @@ const ProductList = () => {
     <div className="space-y-4 animate-fade-in">
       <PageHeader
         title={t('nav.allProducts')}
-        subtitle={`${filtered.length} ${t('common.total')}`}
+        subtitle={`${total} ${t('common.total')}`}
         actions={[
           {
             label: t('nav.addProduct'),
@@ -177,24 +189,32 @@ const ProductList = () => {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             placeholder={t('products.searchProducts')}
             className="w-full ps-8 pe-3 py-2 border border-gray-200 rounded-lg text-sm"
           />
         </div>
-        <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white">
+        <select
+          value={category}
+          onChange={(e) => { setCategory(e.target.value); setPage(1) }}
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white"
+        >
           <option value="">{t('products.filterByCategory')}</option>
-          <option>كابلات</option>
-          <option>مقابس</option>
-          <option>شبكات</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name_ar}</option>)}
         </select>
-        <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white">
+        <select
+          value={brand}
+          onChange={(e) => { setBrand(e.target.value); setPage(1) }}
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white"
+        >
           <option value="">{t('products.filterByBrand')}</option>
-          <option>Samsung</option>
-          <option>Anker</option>
-          <option>TP-Link</option>
+          {brands.map((b) => <option key={b.id} value={b.id}>{b.name_en}</option>)}
         </select>
-        <select className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white">
+        <select
+          value={available}
+          onChange={(e) => { setAvailable(e.target.value); setPage(1) }}
+          className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 bg-white"
+        >
           <option value="">{t('products.filterByStatus')}</option>
           <option value="1">{t('common.available')}</option>
           <option value="0">{t('common.inactive')}</option>
@@ -242,19 +262,21 @@ const ProductList = () => {
       {view === 'list' ? (
         <DataTable
           columns={columns}
-          data={paginated}
+          data={products}
           loading={loading}
           selectable
           onSelectionChange={setSelected}
-          pagination={{ page, limit, total: filtered.length }}
+          pagination={{ page, limit, total }}
           onPageChange={setPage}
         />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {paginated.map((p) => (
+          {loading ? (
+            <div className="col-span-full text-center py-12 text-gray-400">{t('common.loading')}</div>
+          ) : products.map((p) => (
             <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-3 card-shadow hover:shadow-md transition-shadow">
-              <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
-                <span className="text-gray-400 text-xs">IMG</span>
+              <div className="w-full h-32 bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                {p.image_url ? <img src={p.image_url} alt="" className="w-full h-full object-cover" /> : <span className="text-gray-400 text-xs">IMG</span>}
               </div>
               <p className="text-sm font-medium text-gray-800 truncate">{p.name_ar}</p>
               <p className="text-xs text-gray-400 truncate mb-2">{p.name_en}</p>

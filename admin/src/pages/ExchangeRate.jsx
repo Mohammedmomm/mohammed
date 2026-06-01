@@ -1,60 +1,59 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DollarSign, RefreshCw, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../components/shared/PageHeader'
 import LineChartComp from '../components/charts/LineChartComp'
-import useSettingsStore from '../store/settingsStore'
-import { update } from '../api/exchangeRate'
-
-const historyData = [
-  { date: '01/01', rate: 12000 },
-  { date: '01/02', rate: 12200 },
-  { date: '01/03', rate: 12500 },
-  { date: '01/04', rate: 12800 },
-  { date: '01/05', rate: 12600 },
-  { date: '01/06', rate: 13000 },
-  { date: '15/06', rate: 13200 },
-  { date: '01/07', rate: 13500 },
-]
-
-const historyLog = [
-  { date: '2024-07-01', rate: 13500, changed_by: 'admin', note: 'تحديث يومي' },
-  { date: '2024-06-15', rate: 13200, changed_by: 'admin', note: '' },
-  { date: '2024-06-01', rate: 13000, changed_by: 'admin', note: 'تحديث شهري' },
-  { date: '2024-05-01', rate: 12800, changed_by: 'admin', note: '' },
-  { date: '2024-04-01', rate: 12500, changed_by: 'admin', note: 'ارتفاع طفيف' },
-  { date: '2024-03-01', rate: 12200, changed_by: 'admin', note: '' },
-  { date: '2024-02-01', rate: 12000, changed_by: 'admin', note: 'بداية الربع' },
-]
+import axiosInstance from '../api/axiosInstance'
 
 const ExchangeRate = () => {
   const { t } = useTranslation()
-  const { exchangeRate, setExchangeRate } = useSettingsStore()
+  const [currentRate, setCurrentRate] = useState(null)
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
   const [newRate, setNewRate] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [history, setHistory] = useState(historyLog)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [rateRes, historyRes] = await Promise.all([
+        axiosInstance.get('/exchange-rate/current'),
+        axiosInstance.get('/exchange-rate/history'),
+      ])
+      setCurrentRate(rateRes.data.data?.usd_to_syp ?? rateRes.data.data?.rate ?? null)
+      setHistory(historyRes.data.data || [])
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحميل سعر الصرف')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const handleUpdate = async () => {
     const rate = Number(newRate)
     if (!rate || rate <= 0) { toast.error('أدخل سعراً صحيحاً'); return }
     setSaving(true)
     try {
-      await update({ rate, note })
-    } catch {}
-    setExchangeRate(rate)
-    setHistory((prev) => [{
-      date: new Date().toISOString().split('T')[0],
-      rate,
-      changed_by: 'admin',
-      note,
-    }, ...prev])
-    toast.success(t('exchangeRate.rateUpdated'))
-    setNewRate('')
-    setNote('')
-    setSaving(false)
+      await axiosInstance.post('/exchange-rate', { usd_to_syp: rate, note })
+      toast.success(t('exchangeRate.rateUpdated'))
+      setNewRate('')
+      setNote('')
+      fetchData()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحديث سعر الصرف')
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const chartData = history.map((h) => ({
+    date: h.date ? h.date.slice(0, 10) : '',
+    rate: h.usd_to_syp ?? h.rate,
+  })).reverse()
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -68,10 +67,10 @@ const ExchangeRate = () => {
         >
           <DollarSign size={40} className="mx-auto mb-3 opacity-80" />
           <p className="text-sm opacity-80 mb-1">{t('exchangeRate.currentRate')}</p>
-          <p className="text-4xl font-bold mb-2">{exchangeRate?.toLocaleString()}</p>
+          <p className="text-4xl font-bold mb-2">{loading ? '...' : currentRate?.toLocaleString()}</p>
           <p className="text-sm opacity-70">{t('exchangeRate.perDollar')}</p>
           <div className="mt-4 bg-white/20 rounded-xl py-2 px-3 text-xs">
-            {t('exchangeRate.lastUpdated')}: {history[0]?.date || '—'}
+            {t('exchangeRate.lastUpdated')}: {history[0]?.date?.slice(0, 10) || '—'}
           </div>
         </div>
 
@@ -94,9 +93,9 @@ const ExchangeRate = () => {
                 />
                 <span className="text-gray-500 text-sm whitespace-nowrap">ل.س / دولار</span>
               </div>
-              {newRate && Number(newRate) > 0 && (
+              {newRate && Number(newRate) > 0 && currentRate && (
                 <p className="text-xs text-gray-400 mt-1">
-                  التغيير: {Number(newRate) > exchangeRate ? '+' : ''}{((Number(newRate) - exchangeRate) / exchangeRate * 100).toFixed(2)}%
+                  التغيير: {Number(newRate) > currentRate ? '+' : ''}{((Number(newRate) - currentRate) / currentRate * 100).toFixed(2)}%
                 </p>
               )}
             </div>
@@ -124,17 +123,19 @@ const ExchangeRate = () => {
       </div>
 
       {/* Chart */}
-      <div className="bg-white rounded-2xl card-shadow p-5">
-        <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <TrendingUp size={16} style={{ color: '#F47920' }} />
-          {t('exchangeRate.rateChart')}
-        </h3>
-        <LineChartComp
-          data={historyData}
-          xKey="date"
-          lines={[{ key: 'rate', name: t('exchangeRate.usdToSyp'), color: '#1E6FBF' }]}
-        />
-      </div>
+      {chartData.length > 0 && (
+        <div className="bg-white rounded-2xl card-shadow p-5">
+          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <TrendingUp size={16} style={{ color: '#F47920' }} />
+            {t('exchangeRate.rateChart')}
+          </h3>
+          <LineChartComp
+            data={chartData}
+            xKey="date"
+            lines={[{ key: 'rate', name: t('exchangeRate.usdToSyp'), color: '#1E6FBF' }]}
+          />
+        </div>
+      )}
 
       {/* History Table */}
       <div className="bg-white rounded-2xl card-shadow overflow-hidden">
@@ -152,10 +153,12 @@ const ExchangeRate = () => {
               </tr>
             </thead>
             <tbody>
-              {history.map((h, i) => (
+              {loading ? (
+                <tr><td colSpan={4} className="text-center py-6 text-gray-400">{t('common.loading')}</td></tr>
+              ) : history.map((h, i) => (
                 <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-5 py-3 text-gray-600">{h.date}</td>
-                  <td className="px-5 py-3 font-semibold text-gray-800">{h.rate?.toLocaleString()} ل.س</td>
+                  <td className="px-5 py-3 text-gray-600">{h.date?.slice(0, 10)}</td>
+                  <td className="px-5 py-3 font-semibold text-gray-800">{(h.usd_to_syp ?? h.rate)?.toLocaleString()} ل.س</td>
                   <td className="px-5 py-3 text-gray-500">{h.changed_by}</td>
                   <td className="px-5 py-3 text-gray-400 text-xs">{h.note || '—'}</td>
                 </tr>

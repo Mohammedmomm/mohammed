@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Save, Globe, Phone, Share2, Monitor } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../components/shared/PageHeader'
-import useSettingsStore from '../store/settingsStore'
-import { updateSettings } from '../api/settings'
+import axiosInstance from '../api/axiosInstance'
 
 const TABS = [
   { key: 'general', icon: Globe },
@@ -15,21 +14,37 @@ const TABS = [
 
 const Settings = () => {
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettingsStore()
   const [tab, setTab] = useState('general')
-  const [form, setForm] = useState({ ...settings })
+  const [form, setForm] = useState({})
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  const fetchSettings = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await axiosInstance.get('/settings/admin')
+      setForm(res.data.data || {})
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحميل الإعدادات')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchSettings() }, [fetchSettings])
 
   const update = (key, val) => setForm((prev) => ({ ...prev, [key]: val }))
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await updateSettings(form)
-    } catch {}
-    setSettings(form)
-    toast.success(t('settings.settingsSaved'))
-    setSaving(false)
+      await axiosInstance.put('/settings', form)
+      toast.success(t('settings.settingsSaved'))
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل حفظ الإعدادات')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const Field = ({ label, name, type = 'text', placeholder = '' }) => (
@@ -45,6 +60,15 @@ const Settings = () => {
       />
     </div>
   )
+
+  if (loading) {
+    return (
+      <div className="space-y-5 animate-fade-in">
+        <PageHeader title={t('nav.settings')} />
+        <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-5 animate-fade-in">
