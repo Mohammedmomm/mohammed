@@ -21,7 +21,7 @@ export function CurrencyProvider({ children }) {
     // Fetch exchange rate
     getExchangeRate()
       .then((data) => {
-        if (data && data.rate) setExchangeRate(data.rate)
+        if (data && data.usd_to_syp) setExchangeRate(data.usd_to_syp)
       })
       .catch(() => {})
   }, [])

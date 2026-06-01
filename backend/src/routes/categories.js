@@ -34,8 +34,9 @@ const reorderSchema = Joi.object({
 // Public routes
 router.get('/tree', ctrl.getTree);
 router.get('/flat', ctrl.getFlat);
-router.get('/:id', ctrl.getById);
 router.get('/slug/:slug/products', ctrl.getProductsBySlug);
+router.get('/slug/:slug', ctrl.getBySlug);
+router.get('/:id', ctrl.getById);
 
 // Admin routes
 router.post('/', auth, validate(createSchema), ctrl.create);

@@ -11,70 +11,79 @@ const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Silently handle errors — callers decide what to do
     return Promise.reject(error)
   }
 )
 
 // Categories
 export async function getCategories() {
-  const res = await api.get('/categories')
-  return res.data
+  const res = await api.get('/categories/tree')
+  return res.data?.data || []
 }
 
 export async function getCategoryBySlug(slug) {
-  const res = await api.get(`/categories/${slug}`)
-  return res.data
+  const res = await api.get(`/categories/slug/${slug}`)
+  return res.data?.data
 }
 
 export async function getCategoryProducts(slug, params = {}) {
-  const res = await api.get(`/categories/${slug}/products`, { params })
-  return res.data
+  const res = await api.get(`/categories/slug/${slug}/products`, { params })
+  const d = res.data?.data
+  return {
+    products: d?.data || [],
+    total: d?.pagination?.total || 0,
+    pagination: d?.pagination,
+  }
 }
 
 // Products
 export async function getProducts(params = {}) {
   const res = await api.get('/products', { params })
-  return res.data
+  const d = res.data?.data
+  return {
+    products: d?.data || [],
+    total: d?.pagination?.total || 0,
+    pagination: d?.pagination,
+  }
 }
 
 export async function getProduct(id) {
   const res = await api.get(`/products/${id}`)
-  return res.data
+  return res.data?.data
 }
 
 export async function getProductBySlug(slug) {
   const res = await api.get(`/products/slug/${slug}`)
-  return res.data
+  return res.data?.data
 }
 
 export async function getSimilarProducts(id) {
   const res = await api.get(`/products/${id}/similar`)
-  return res.data
+  return res.data?.data || []
 }
 
-// Brands
+// Brands — fetch all
 export async function getBrands() {
-  const res = await api.get('/brands')
-  return res.data
+  const res = await api.get('/brands', { params: { limit: 100 } })
+  return res.data?.data?.data || []
 }
 
 // Ads
 export async function getAds(position) {
   const res = await api.get('/ads', { params: { position } })
-  return res.data
+  return res.data?.data || []
 }
 
-// Settings
+// Settings (public)
 export async function getSettings() {
-  const res = await api.get('/settings')
-  return res.data
+  const res = await api.get('/settings/public')
+  return res.data?.data || {}
 }
 
 // Exchange rate
 export async function getExchangeRate() {
-  const res = await api.get('/exchange-rate')
-  return res.data
+  const res = await api.get('/exchange-rate/current')
+  return res.data?.data
 }
 
 // Analytics

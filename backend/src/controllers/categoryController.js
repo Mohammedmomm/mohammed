@@ -66,6 +66,31 @@ const getById = async (req, res, next) => {
   }
 };
 
+const getBySlug = async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const catResult = await pool.query('SELECT * FROM categories WHERE slug = $1', [slug]);
+    if (catResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+    const category = catResult.rows[0];
+    const childrenResult = await pool.query(
+      'SELECT * FROM categories WHERE parent_id = $1 ORDER BY sort_order ASC',
+      [category.id]
+    );
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM products WHERE category_id = $1 AND is_available = true',
+      [category.id]
+    );
+    res.json({
+      success: true,
+      data: { ...category, children: childrenResult.rows, product_count: parseInt(countResult.rows[0].count) },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const getProductsBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -203,4 +228,4 @@ const reorder = async (req, res, next) => {
   }
 };
 
-module.exports = { getTree, getFlat, getById, getProductsBySlug, create, update, deleteCategory, reorder };
+module.exports = { getTree, getFlat, getById, getBySlug, getProductsBySlug, create, update, deleteCategory, reorder };

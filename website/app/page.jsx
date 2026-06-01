@@ -16,19 +16,19 @@ async function getData() {
   ])
 
   const featured = featuredRes.status === 'fulfilled'
-    ? (Array.isArray(featuredRes.value) ? featuredRes.value : featuredRes.value?.products || [])
+    ? (featuredRes.value?.products || [])
     : []
 
   const newest = newestRes.status === 'fulfilled'
-    ? (Array.isArray(newestRes.value) ? newestRes.value : newestRes.value?.products || [])
+    ? (newestRes.value?.products || [])
     : []
 
   const categories = categoriesRes.status === 'fulfilled'
-    ? (Array.isArray(categoriesRes.value) ? categoriesRes.value : categoriesRes.value?.categories || [])
+    ? (Array.isArray(categoriesRes.value) ? categoriesRes.value : [])
     : []
 
   const brands = brandsRes.status === 'fulfilled'
-    ? (Array.isArray(brandsRes.value) ? brandsRes.value : brandsRes.value?.brands || [])
+    ? (Array.isArray(brandsRes.value) ? brandsRes.value : [])
     : []
 
   return { featured, newest, categories, brands }

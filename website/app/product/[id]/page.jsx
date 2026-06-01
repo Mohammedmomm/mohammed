@@ -88,7 +88,7 @@ export default function ProductPage() {
   const whatsappMessage = lang === 'ar'
     ? `مرحباً، أريد الاستفسار عن: ${name}`
     : `Hello, I'd like to inquire about: ${name}`
-  const whatsappLink = buildWhatsAppLink(settings?.whatsapp || settings?.phone || '', whatsappMessage)
+  const whatsappLink = buildWhatsAppLink(settings?.whatsapp_number || settings?.phone_number || '', whatsappMessage)
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A1628' }}>
@@ -187,7 +187,7 @@ export default function ProductPage() {
             )}
 
             {/* WhatsApp CTA */}
-            {(settings?.whatsapp || settings?.phone) && (
+            {(settings?.whatsapp_number || settings?.phone_number) && (
               <a
                 href={whatsappLink}
                 target="_blank"
