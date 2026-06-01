@@ -111,7 +111,14 @@ const ProductForm = () => {
   const onSubmit = async (data) => {
     setLoading(true)
     try {
-      const payload = { ...data, category_id: categoryId, images, variants, tags }
+      const payload = {
+        ...data,
+        category_id: categoryId || null,
+        brand_id: data.brand_id ? Number(data.brand_id) : null,
+        images,
+        variants,
+        tags
+      }
       if (isEdit) {
         await updateProduct(id, payload)
         toast.success(t('products.productUpdated'))
