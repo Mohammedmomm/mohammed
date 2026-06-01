@@ -1,33 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronDown, Plus, Edit2, Trash2, FolderOpen, Folder, X, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../components/shared/PageHeader'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
-
-const initialCategories = [
-  {
-    id: 1, name_ar: 'كابلات', name_en: 'Cables', icon: '🔌', product_count: 245, sort_order: 1,
-    children: [
-      { id: 11, name_ar: 'كابلات HDMI', name_en: 'HDMI Cables', icon: '📺', product_count: 85, sort_order: 1, children: [] },
-      { id: 12, name_ar: 'كابلات USB', name_en: 'USB Cables', icon: '🔗', product_count: 92, sort_order: 2, children: [] },
-      { id: 13, name_ar: 'كابلات شبكة', name_en: 'Network Cables', icon: '🌐', product_count: 68, sort_order: 3, children: [] },
-    ],
-  },
-  {
-    id: 2, name_ar: 'مقابس وقطع توصيل', name_en: 'Connectors', icon: '🔧', product_count: 180, sort_order: 2,
-    children: [
-      { id: 21, name_ar: 'مقابس RCA', name_en: 'RCA Connectors', icon: '🔴', product_count: 45, sort_order: 1, children: [] },
-      { id: 22, name_ar: 'مقابس HDMI', name_en: 'HDMI Connectors', icon: '⬛', product_count: 38, sort_order: 2, children: [] },
-    ],
-  },
-  {
-    id: 3, name_ar: 'أجهزة صوتية', name_en: 'Audio Devices', icon: '🔊', product_count: 98, sort_order: 3, children: [],
-  },
-  {
-    id: 4, name_ar: 'محولات', name_en: 'Adapters', icon: '🔄', product_count: 132, sort_order: 4, children: [],
-  },
-]
+import axiosInstance from '../api/axiosInstance'
 
 const CategoryRow = ({ cat, depth = 0, onEdit, onDelete, onAddChild }) => {
   const [expanded, setExpanded] = useState(true)
@@ -84,10 +61,20 @@ const CategoryForm = ({ cat, parent, onSave, onClose }) => {
   const handleSave = async () => {
     if (!form.name_ar || !form.name_en) { toast.error('الاسم مطلوب'); return }
     setSaving(true)
-    setTimeout(() => {
-      onSave({ ...cat, ...form, id: cat?.id || Date.now(), children: cat?.children || [], product_count: cat?.product_count || 0, parent_id: parent?.id })
+    try {
+      if (cat?.id) {
+        await axiosInstance.put(`/categories/${cat.id}`, form)
+        toast.success(t('categories.editCategory') + ' ✓')
+      } else {
+        await axiosInstance.post('/categories', { ...form, parent_id: parent?.id || null })
+        toast.success(t('categories.addCategory') + ' ✓')
+      }
+      onSave()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'حدث خطأ')
+    } finally {
       setSaving(false)
-    }, 500)
+    }
   }
 
   return (
@@ -134,46 +121,52 @@ const CategoryForm = ({ cat, parent, onSave, onClose }) => {
   )
 }
 
-const updateTree = (nodes, updated) =>
-  nodes.map((n) => n.id === updated.id ? { ...n, ...updated } : { ...n, children: updateTree(n.children || [], updated) })
-
-const addToTree = (nodes, newCat, parentId) => {
-  if (!parentId) return [...nodes, newCat]
-  return nodes.map((n) =>
-    n.id === parentId ? { ...n, children: [...(n.children || []), newCat] } : { ...n, children: addToTree(n.children || [], newCat, parentId) }
-  )
-}
-
-const removeFromTree = (nodes, id) =>
-  nodes.filter((n) => n.id !== id).map((n) => ({ ...n, children: removeFromTree(n.children || [], id) }))
-
 const Categories = () => {
   const { t } = useTranslation()
-  const [categories, setCategories] = useState(initialCategories)
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(null)
   const [parentForNew, setParentForNew] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const fetchCategories = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await axiosInstance.get('/categories/tree')
+      setCategories(res.data.data || [])
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل تحميل التصنيفات')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchCategories() }, [fetchCategories])
 
   const handleEdit = (cat) => { setEditing(cat); setParentForNew(null); setShowForm(true) }
   const handleAddChild = (parent) => { setEditing(null); setParentForNew(parent); setShowForm(true) }
   const handleAddRoot = () => { setEditing(null); setParentForNew(null); setShowForm(true) }
 
-  const handleSave = (cat) => {
-    if (editing) {
-      setCategories(updateTree(categories, cat))
-      toast.success(t('categories.editCategory') + ' ✓')
-    } else {
-      setCategories(addToTree(categories, cat, parentForNew?.id || null))
-      toast.success(t('categories.addCategory') + ' ✓')
-    }
+  const handleSave = () => {
     setShowForm(false)
+    fetchCategories()
   }
 
-  const handleDelete = () => {
-    setCategories(removeFromTree(categories, deleteTarget.id))
-    toast.success(t('categories.deleteCategory') + ' ✓')
-    setDeleteTarget(null)
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await axiosInstance.delete(`/categories/${deleteTarget.id}`)
+      toast.success(t('categories.deleteCategory') + ' ✓')
+      fetchCategories()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'فشل الحذف')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
   }
 
   return (
@@ -192,7 +185,9 @@ const Categories = () => {
             </h3>
             <span className="text-xs text-gray-400">{categories.length} تصنيف رئيسي</span>
           </div>
-          {categories.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">{t('common.loading')}</div>
+          ) : categories.length === 0 ? (
             <div className="text-center py-12 text-gray-400">{t('categories.noCategories')}</div>
           ) : (
             categories.map((cat) => (
@@ -223,6 +218,7 @@ const Categories = () => {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
+        loading={deleting}
         title={t('categories.deleteCategory')}
         message={t('categories.confirmDelete')}
         confirmText={t('common.delete')}
