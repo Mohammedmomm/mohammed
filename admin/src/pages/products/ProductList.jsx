@@ -54,13 +54,8 @@ const ProductList = () => {
         params: { page, limit, category, brand, available, q: search },
       })
       const d = res.data.data
-      if (d && d.items) {
-        setProducts(d.items)
-        setTotal(d.pagination?.total || d.items.length)
-      } else {
-        setProducts(d || [])
-        setTotal((d || []).length)
-      }
+      setProducts(d?.data || [])
+      setTotal(d?.pagination?.total || 0)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تحميل المنتجات')
     } finally {
