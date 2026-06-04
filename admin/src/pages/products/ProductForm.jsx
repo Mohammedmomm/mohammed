@@ -12,6 +12,7 @@ import ImageUpload from '../../components/shared/ImageUpload'
 import { createProduct, updateProduct, getProduct } from '../../api/products'
 import { generateSlug } from '../../utils/slugify'
 import useSettingsStore from '../../store/settingsStore'
+import axiosInstance from '../../api/axiosInstance'
 
 const schema = z.object({
   name_ar: z.string().min(1, 'مطلوب'),
@@ -31,14 +32,6 @@ const schema = z.object({
 
 const TABS = ['basicInfo', 'pricing', 'description', 'images', 'specifications', 'variants']
 
-const brands = [
-  { id: 1, name_en: 'Samsung' },
-  { id: 2, name_en: 'Anker' },
-  { id: 3, name_en: 'TP-Link' },
-  { id: 4, name_en: 'Ugreen' },
-  { id: 5, name_en: 'JBL' },
-]
-
 const ProductForm = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -51,7 +44,30 @@ const ProductForm = () => {
   const [tags, setTags] = useState([])
   const [tagInput, setTagInput] = useState('')
   const [categoryId, setCategoryId] = useState(null)
+  const [brandsList, setBrandsList] = useState([])
+  const [specTemplates, setSpecTemplates] = useState([])
+  const [specValues, setSpecValues] = useState({})
   const exchangeRate = useSettingsStore((s) => s.exchangeRate)
+
+  // Load brands from API
+  useEffect(() => {
+    axiosInstance.get('/brands?limit=100')
+      .then((res) => {
+        const d = res.data?.data
+        setBrandsList(Array.isArray(d) ? d : (d?.data || []))
+      })
+      .catch(() => {})
+  }, [])
+
+  // Load spec templates when category changes
+  useEffect(() => {
+    if (!categoryId) { setSpecTemplates([]); return }
+    axiosInstance.get(`/specifications/templates/category/${categoryId}`)
+      .then((res) => {
+        setSpecTemplates(res.data?.data || [])
+      })
+      .catch(() => setSpecTemplates([]))
+  }, [categoryId])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -111,13 +127,23 @@ const ProductForm = () => {
   const onSubmit = async (data) => {
     setLoading(true)
     try {
+      const specs = specTemplates
+        .filter((tmpl) => specValues[tmpl.field_key] !== undefined && specValues[tmpl.field_key] !== '')
+        .map((tmpl) => ({
+          field_key: tmpl.field_key,
+          value_ar: String(specValues[tmpl.field_key]),
+          value_en: String(specValues[tmpl.field_key]),
+          unit: tmpl.unit || null,
+        }))
+
       const payload = {
         ...data,
         category_id: categoryId || null,
         brand_id: data.brand_id ? Number(data.brand_id) : null,
         images,
         variants,
-        tags
+        tags,
+        specs,
       }
       if (isEdit) {
         await updateProduct(id, payload)
@@ -187,7 +213,9 @@ const ProductForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('products.brand')}</label>
                 <select {...register('brand_id')} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white">
                   <option value="">{t('common.select')}</option>
-                  {brands.map((b) => <option key={b.id} value={b.id}>{b.name_en}</option>)}
+                  {brandsList.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name_ar || b.name_en || b.name}</option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -320,11 +348,49 @@ const ProductForm = () => {
             <div>
               {!categoryId ? (
                 <div className="text-center py-12 text-gray-400">
-                  <p>{t('products.selectCategoryFirst')}</p>
+                  <p>اختر التصنيف أولاً من تبويب المعلومات الأساسية</p>
+                </div>
+              ) : specTemplates.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p>لا توجد مواصفات محددة لهذا التصنيف</p>
                 </div>
               ) : (
-                <div className="text-gray-500 text-sm">
-                  مواصفات التصنيف المحدد ستظهر هنا بعد الاتصال بالخادم.
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {specTemplates.map((tmpl) => (
+                    <div key={tmpl.id}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        {tmpl.label_ar}
+                        {tmpl.unit && <span className="text-gray-400 text-xs mr-1">({tmpl.unit})</span>}
+                        {tmpl.is_required && <span className="text-red-500 mr-1">*</span>}
+                      </label>
+                      {tmpl.field_type === 'select' ? (
+                        <select
+                          value={specValues[tmpl.field_key] || ''}
+                          onChange={(e) => setSpecValues((prev) => ({ ...prev, [tmpl.field_key]: e.target.value }))}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white"
+                        >
+                          <option value="">اختر...</option>
+                          {(tmpl.options || []).map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : tmpl.field_type === 'textarea' ? (
+                        <textarea
+                          value={specValues[tmpl.field_key] || ''}
+                          onChange={(e) => setSpecValues((prev) => ({ ...prev, [tmpl.field_key]: e.target.value }))}
+                          rows={3}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none"
+                        />
+                      ) : (
+                        <input
+                          type={tmpl.field_type === 'number' ? 'number' : 'text'}
+                          value={specValues[tmpl.field_key] || ''}
+                          onChange={(e) => setSpecValues((prev) => ({ ...prev, [tmpl.field_key]: e.target.value }))}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm"
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
