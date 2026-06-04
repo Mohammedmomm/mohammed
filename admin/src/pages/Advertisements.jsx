@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Edit2, Trash2, X, Save, Image as ImageIcon, MousePointer } from 'lucide-react'
+import { Plus, Edit2, Trash2, X, Save, Image as ImageIcon, MousePointer, Upload, Link } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../components/shared/PageHeader'
 import ConfirmDialog from '../components/shared/ConfirmDialog'
@@ -31,6 +31,27 @@ const AdModal = ({ ad, onSave, onClose }) => {
     image_url: ad?.image_url || '',
   })
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [imgTab, setImgTab] = useState('url')
+  const fileRef = useRef(null)
+
+  const handleImageFile = async (file) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('image', file)
+      const res = await axiosInstance.post('/upload/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const url = res.data?.data?.url
+      if (url) setForm((f) => ({ ...f, image_url: url }))
+    } catch {
+      toast.error('فشل رفع الصورة')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSave = async () => {
     if (!form.title_ar) { toast.error('العنوان مطلوب'); return }
@@ -96,7 +117,52 @@ const AdModal = ({ ad, onSave, onClose }) => {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700 mb-1.5 block">{t('ads.adImage')}</label>
-            <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm" dir="ltr" placeholder="https://..." />
+            {/* Tabs */}
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-2 w-fit">
+              <button type="button" onClick={() => setImgTab('url')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${imgTab === 'url' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>
+                <Link size={12} /> رابط URL
+              </button>
+              <button type="button" onClick={() => setImgTab('file')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${imgTab === 'file' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>
+                <Upload size={12} /> من الجهاز
+              </button>
+            </div>
+            {imgTab === 'url' ? (
+              <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm" dir="ltr" placeholder="https://..." />
+            ) : (
+              <div
+                className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center cursor-pointer hover:border-blue-300 hover:bg-gray-50 transition-all"
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); handleImageFile(e.dataTransfer.files[0]) }}
+              >
+                <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => handleImageFile(e.target.files[0])} />
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <p className="text-xs text-gray-400">جاري الرفع...</p>
+                  </div>
+                ) : form.image_url && imgTab === 'file' ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <img src={form.image_url} alt="" className="h-16 object-contain rounded-lg" />
+                    <p className="text-xs text-green-500">تم الرفع بنجاح ✓</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload size={24} className="text-gray-300" />
+                    <p className="text-xs text-gray-400">اسحب صورة هنا أو اضغط للاختيار</p>
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Preview */}
+            {form.image_url && imgTab === 'url' && (
+              <img src={form.image_url} alt="" className="mt-2 h-16 object-contain rounded-lg border border-gray-100"
+                onError={(e) => e.target.style.display = 'none'} />
+            )}
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="rounded border-gray-300 text-blue-500" />
