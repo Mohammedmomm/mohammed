@@ -25,6 +25,7 @@ const reorderSchema = Joi.object({
 });
 
 router.get('/', ctrl.getByProduct);
+router.post('/sync', auth, ctrl.syncVariants);
 router.post('/', auth, validate(createSchema), ctrl.create);
 router.put('/reorder', auth, validate(reorderSchema), ctrl.reorder);
 router.put('/:id', auth, validate(updateSchema), ctrl.update);

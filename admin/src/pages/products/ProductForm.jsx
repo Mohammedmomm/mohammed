@@ -1,3 +1,4 @@
+'use client'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
@@ -49,9 +50,8 @@ const ProductForm = () => {
   const [specValues, setSpecValues] = useState({})
   const exchangeRate = useSettingsStore((s) => s.exchangeRate)
 
-  // Load brands from API
   useEffect(() => {
-    axiosInstance.get('/brands?limit=100')
+    axiosInstance.get('/brands?limit=200')
       .then((res) => {
         const d = res.data?.data
         setBrandsList(Array.isArray(d) ? d : (d?.data || []))
@@ -59,12 +59,17 @@ const ProductForm = () => {
       .catch(() => {})
   }, [])
 
-  // Load spec templates when category changes
   useEffect(() => {
     if (!categoryId) { setSpecTemplates([]); return }
     axiosInstance.get(`/specifications/templates/category/${categoryId}`)
       .then((res) => {
-        setSpecTemplates(res.data?.data || [])
+        const rows = res.data?.data || []
+        setSpecTemplates(rows.map((r) => ({
+          ...r,
+          options: Array.isArray(r.options)
+            ? r.options
+            : r.options ? JSON.parse(r.options) : [],
+        })))
       })
       .catch(() => setSpecTemplates([]))
   }, [categoryId])
@@ -84,23 +89,49 @@ const ProductForm = () => {
   const priceUSD = watch('price_usd')
   const nameEn = watch('name_en')
 
+  // Auto-generate slug only when creating a new product
   useEffect(() => {
-    if (nameEn) setValue('slug', generateSlug(nameEn))
+    if (!isEdit && nameEn) setValue('slug', generateSlug(nameEn))
   }, [nameEn])
 
   useEffect(() => {
-    if (isEdit && id) {
-      getProduct(id)
-        .then((res) => {
-          const p = res.data
-          Object.keys(schema.shape).forEach((k) => p[k] !== undefined && setValue(k, p[k]))
-          if (p.category_id) setCategoryId(p.category_id)
-          if (p.images) setImages(p.images)
-          if (p.variants) setVariants(p.variants)
-          if (p.tags) setTags(p.tags)
+    if (!isEdit || !id) return
+    getProduct(id)
+      .then((res) => {
+        const p = res.data?.data || res.data
+        Object.keys(schema.shape).forEach((k) => {
+          if (p[k] !== undefined) setValue(k, p[k])
         })
-        .catch(() => {})
-    }
+        if (p.category_id) setCategoryId(p.category_id)
+
+        // Normalize images from DB shape
+        if (p.images?.length) {
+          setImages(p.images.map((img) => ({
+            url: img.image_url || img.url,
+            is_primary: img.is_primary || false,
+          })))
+        }
+
+        // Normalize variants from DB shape
+        if (p.variants?.length) {
+          setVariants(p.variants.map((v) => ({
+            id: v.id,
+            label_ar: v.variant_label_ar || v.label_ar || '',
+            label_en: v.variant_label_en || v.label_en || '',
+            price_syp: v.price_syp || '',
+          })))
+        }
+
+        if (Array.isArray(p.tags)) setTags(p.tags)
+
+        // Load existing spec values
+        if (p.specifications?.length) {
+          const sv = {}
+          p.specifications.forEach((s) => { sv[s.field_key] = s.value_ar || s.value_en || '' })
+          setSpecValues(sv)
+        }
+      })
+      .catch(() => {})
   }, [id])
 
   const calcFromSYP = () => {
@@ -112,21 +143,67 @@ const ProductForm = () => {
   }
 
   const addTag = () => {
-    const t2 = tagInput.trim()
-    if (t2 && !tags.includes(t2)) { setTags([...tags, t2]); setTagInput('') }
+    const tag = tagInput.trim()
+    if (tag && !tags.includes(tag)) { setTags([...tags, tag]); setTagInput('') }
   }
 
   const addVariant = () => {
-    setVariants([...variants, { id: Date.now(), label_ar: '', label_en: '', price_syp: '', stock: '' }])
+    setVariants([...variants, { id: `new_${Date.now()}`, label_ar: '', label_en: '', price_syp: '' }])
   }
 
-  const updateVariant = (id, field, val) => {
-    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, [field]: val } : v)))
+  const updateVariant = (varId, field, val) => {
+    setVariants((prev) => prev.map((v) => (v.id === varId ? { ...v, [field]: val } : v)))
   }
 
   const onSubmit = async (data) => {
     setLoading(true)
     try {
+      const payload = {
+        name_ar: data.name_ar,
+        name_en: data.name_en,
+        description_ar: data.description_ar || null,
+        description_en: data.description_en || null,
+        category_id: categoryId || null,
+        brand_id: data.brand_id ? Number(data.brand_id) : null,
+        price_syp: data.price_syp > 0 ? data.price_syp : null,
+        price_usd: data.price_usd > 0 ? data.price_usd : null,
+        has_variants: data.has_variants || false,
+        has_details: data.has_details !== false,
+        is_available: data.is_available !== false,
+        is_featured: data.is_featured || false,
+        tags: tags.length > 0 ? tags : null,
+      }
+
+      let productId = id
+      if (isEdit) {
+        await updateProduct(id, payload)
+      } else {
+        const res = await createProduct(payload)
+        productId = res.data?.data?.id || res.data?.id
+      }
+
+      // Save images
+      await axiosInstance.post(`/products/${productId}/images/sync`, {
+        images: images.map((img, i) => ({
+          image_url: img.url,
+          is_primary: img.is_primary || i === 0,
+        })),
+      }).catch(() => {})
+
+      // Save variants
+      if (data.has_variants && variants.length > 0) {
+        await axiosInstance.post(`/products/${productId}/variants/sync`, {
+          variants: variants
+            .filter((v) => v.label_ar || v.label_en)
+            .map((v) => ({
+              variant_label_ar: v.label_ar,
+              variant_label_en: v.label_en,
+              price_syp: Number(v.price_syp) > 0 ? Number(v.price_syp) : null,
+            })),
+        }).catch(() => {})
+      }
+
+      // Save specs
       const specs = specTemplates
         .filter((tmpl) => specValues[tmpl.field_key] !== undefined && specValues[tmpl.field_key] !== '')
         .map((tmpl) => ({
@@ -135,23 +212,11 @@ const ProductForm = () => {
           value_en: String(specValues[tmpl.field_key]),
           unit: tmpl.unit || null,
         }))
+      if (specs.length > 0) {
+        await axiosInstance.put(`/specifications/product/${productId}`, { specs }).catch(() => {})
+      }
 
-      const payload = {
-        ...data,
-        category_id: categoryId || null,
-        brand_id: data.brand_id ? Number(data.brand_id) : null,
-        images,
-        variants,
-        tags,
-        specs,
-      }
-      if (isEdit) {
-        await updateProduct(id, payload)
-        toast.success(t('products.productUpdated'))
-      } else {
-        await createProduct(payload)
-        toast.success(t('products.productCreated'))
-      }
+      toast.success(isEdit ? t('products.productUpdated') : t('products.productCreated'))
       navigate('/products')
     } catch (err) {
       const msg = err?.response?.data?.error || 'حدث خطأ، حاول مجدداً'
@@ -208,6 +273,7 @@ const ProductForm = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('products.slug')}</label>
                 <input {...register('slug')} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-mono bg-gray-50" dir="ltr" />
+                {errors.slug && <p className="text-xs text-red-500 mt-1">{errors.slug.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('products.brand')}</label>
@@ -254,7 +320,7 @@ const ProductForm = () => {
                   {tags.map((tag) => (
                     <span key={tag} className="flex items-center gap-1 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm">
                       {tag}
-                      <button type="button" onClick={() => setTags(tags.filter((t) => t !== tag))} className="hover:text-red-500">
+                      <button type="button" onClick={() => setTags(tags.filter((tg) => tg !== tag))} className="hover:text-red-500">
                         <X size={12} />
                       </button>
                     </span>
@@ -267,7 +333,7 @@ const ProductForm = () => {
           {/* Tab 1: Pricing */}
           {activeTab === 1 && (
             <div className="space-y-5">
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                 <span className="text-sm text-blue-700">
                   {t('products.currentExchangeRate')}: <strong>{exchangeRate?.toLocaleString()} ل.س / دولار</strong>
                 </span>
@@ -278,6 +344,7 @@ const ProductForm = () => {
                   <div className="flex gap-2">
                     <input
                       type="number"
+                      min="0"
                       {...register('price_syp')}
                       className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm"
                       placeholder="0"
@@ -292,8 +359,9 @@ const ProductForm = () => {
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      {...register('price_usd')}
+                      min="0"
                       step="0.01"
+                      {...register('price_usd')}
                       className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm"
                       placeholder="0.00"
                     />
@@ -353,6 +421,7 @@ const ProductForm = () => {
               ) : specTemplates.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <p>لا توجد مواصفات محددة لهذا التصنيف</p>
+                  <p className="text-xs mt-1">أضف قوالب مواصفات من قسم قوالب المواصفات</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -360,7 +429,9 @@ const ProductForm = () => {
                     <div key={tmpl.id}>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         {tmpl.label_ar}
+                        {tmpl.label_en && <span className="text-gray-400 text-xs mr-1">/ {tmpl.label_en}</span>}
                         {tmpl.unit && <span className="text-gray-400 text-xs mr-1">({tmpl.unit})</span>}
+                        {tmpl.is_required && <span className="text-red-400 mr-1">*</span>}
                       </label>
                       {tmpl.field_type === 'select' ? (
                         <select
@@ -369,10 +440,20 @@ const ProductForm = () => {
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white"
                         >
                           <option value="">اختر...</option>
-                          {(Array.isArray(tmpl.options) ? tmpl.options : JSON.parse(tmpl.options || '[]')).map((opt) => (
+                          {(tmpl.options || []).map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
+                      ) : tmpl.field_type === 'boolean' ? (
+                        <label className="flex items-center gap-2 cursor-pointer mt-1">
+                          <input
+                            type="checkbox"
+                            checked={specValues[tmpl.field_key] === 'true' || specValues[tmpl.field_key] === true}
+                            onChange={(e) => setSpecValues((prev) => ({ ...prev, [tmpl.field_key]: e.target.checked ? 'true' : 'false' }))}
+                            className="rounded border-gray-300 text-blue-500 w-4 h-4"
+                          />
+                          <span className="text-sm text-gray-600">نعم / Yes</span>
+                        </label>
                       ) : tmpl.field_type === 'textarea' ? (
                         <textarea
                           value={specValues[tmpl.field_key] || ''}
@@ -407,7 +488,7 @@ const ProductForm = () => {
                   {variants.length === 0 && (
                     <p className="text-gray-400 text-sm py-4">{t('products.noVariants')}</p>
                   )}
-                  {variants.map((v, idx) => (
+                  {variants.map((v) => (
                     <div key={v.id} className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl bg-gray-50">
                       <GripVertical size={16} className="text-gray-300 cursor-grab flex-shrink-0" />
                       <input
@@ -429,14 +510,8 @@ const ProductForm = () => {
                         onChange={(e) => updateVariant(v.id, 'price_syp', e.target.value)}
                         placeholder={t('products.variantPrice')}
                         type="number"
-                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
-                      />
-                      <input
-                        value={v.stock}
-                        onChange={(e) => updateVariant(v.id, 'stock', e.target.value)}
-                        placeholder={t('products.variantStock')}
-                        type="number"
-                        className="w-20 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
+                        min="0"
+                        className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white"
                       />
                       <button
                         type="button"
@@ -463,7 +538,7 @@ const ProductForm = () => {
       </div>
 
       {/* Bottom Save */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 pb-6">
         <button
           type="button"
           onClick={() => navigate('/products')}

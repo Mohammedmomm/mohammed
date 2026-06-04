@@ -30,6 +30,7 @@ const reorderSchema = Joi.object({
 });
 
 router.get('/', ctrl.getProductImages);
+router.post('/sync', auth, ctrl.syncImages);
 router.post('/', auth, upload.array('images', 10), ctrl.addImages);
 router.put('/reorder', auth, validate(reorderSchema), ctrl.reorderImages);
 router.put('/:id', auth, validate(updateImageSchema), ctrl.updateImage);

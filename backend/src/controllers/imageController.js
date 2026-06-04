@@ -163,4 +163,34 @@ const reorderImages = async (req, res, next) => {
   }
 };
 
-module.exports = { getProductImages, addImages, updateImage, deleteImage, setPrimary, reorderImages };
+const syncImages = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+    const { images } = req.body; // [{ image_url, is_primary, sort_order }]
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM product_images WHERE product_id = $1', [productId]);
+      for (let i = 0; i < (images || []).length; i++) {
+        const img = images[i];
+        await client.query(
+          `INSERT INTO product_images (product_id, image_url, is_primary, sort_order)
+           VALUES ($1, $2, $3, $4)`,
+          [productId, img.image_url, img.is_primary || i === 0, i]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true, data: { message: 'Images synced' } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getProductImages, addImages, syncImages, updateImage, deleteImage, setPrimary, reorderImages };

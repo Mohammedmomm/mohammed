@@ -118,4 +118,42 @@ const reorder = async (req, res, next) => {
   }
 };
 
-module.exports = { getByProduct, create, update, deleteVariant, reorder };
+const syncVariants = async (req, res, next) => {
+  try {
+    const { productId } = req.params;
+    const { variants } = req.body; // [{ variant_label_ar, variant_label_en, price_syp, price_usd }]
+
+    // Pre-calculate prices outside transaction
+    const withPrices = await Promise.all(
+      (variants || []).map(async (v) => {
+        const prices = await calculatePrices(v.price_syp || null, v.price_usd || null);
+        return { ...v, price_syp: prices.price_syp, price_usd: prices.price_usd };
+      })
+    );
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM product_variants WHERE product_id = $1', [productId]);
+      for (let i = 0; i < withPrices.length; i++) {
+        const v = withPrices[i];
+        await client.query(
+          `INSERT INTO product_variants (product_id, variant_label_ar, variant_label_en, price_syp, price_usd, is_available, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [productId, v.variant_label_ar, v.variant_label_en, v.price_syp, v.price_usd, true, i]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+    res.json({ success: true, data: { message: 'Variants synced' } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getByProduct, create, update, deleteVariant, reorder, syncVariants };
