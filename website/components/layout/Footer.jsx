@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Zap, Phone, MapPin, Mail, MessageCircle } from 'lucide-react'
+import { Zap, Phone, MapPin, Mail, MessageCircle, Facebook, Instagram, Send, Twitter, Youtube } from 'lucide-react'
 import { getSettings, getCategories } from '@/lib/api'
 import { useLanguage } from '@/context/LanguageContext'
 import { getName, buildWhatsAppLink } from '@/lib/utils'
@@ -46,9 +46,9 @@ export default function Footer() {
                 ? 'متجر متخصص في قطع الإلكترونيات والكابلات بأفضل الأسعار في سوريا.'
                 : 'Specialized store for electronic parts and cables at the best prices in Syria.'}
             </p>
-            {settings?.whatsapp && (
+            {settings?.whatsapp_number && (
               <a
-                href={buildWhatsAppLink(settings.whatsapp, lang === 'ar' ? 'مرحباً، أريد الاستفسار' : 'Hello, I have an inquiry')}
+                href={buildWhatsAppLink(settings.whatsapp_number, lang === 'ar' ? 'مرحباً، أريد الاستفسار' : 'Hello, I have an inquiry')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-opacity hover:opacity-80"
@@ -119,35 +119,27 @@ export default function Footer() {
               {lang === 'ar' ? 'معلومات التواصل' : 'Contact Info'}
             </h3>
             <ul className="space-y-3">
-              {settings?.phone && (
+              {settings?.phone_number && (
                 <li className="flex items-start gap-2">
                   <Phone size={16} style={{ color: '#00D4FF', marginTop: 2, flexShrink: 0 }} />
-                  <a
-                    href={`tel:${settings.phone}`}
-                    className="text-sm transition-colors hover:text-cyan-DEFAULT"
-                    style={{ color: '#94A3B8' }}
-                  >
-                    {settings.phone}
+                  <a href={`tel:${settings.phone_number}`} className="text-sm" style={{ color: '#94A3B8' }}>
+                    {settings.phone_number}
                   </a>
                 </li>
               )}
               {settings?.email && (
                 <li className="flex items-start gap-2">
                   <Mail size={16} style={{ color: '#00D4FF', marginTop: 2, flexShrink: 0 }} />
-                  <a
-                    href={`mailto:${settings.email}`}
-                    className="text-sm transition-colors hover:text-cyan-DEFAULT"
-                    style={{ color: '#94A3B8' }}
-                  >
+                  <a href={`mailto:${settings.email}`} className="text-sm" style={{ color: '#94A3B8' }}>
                     {settings.email}
                   </a>
                 </li>
               )}
-              {settings?.address && (
+              {(settings?.address_ar || settings?.address_en) && (
                 <li className="flex items-start gap-2">
                   <MapPin size={16} style={{ color: '#00D4FF', marginTop: 2, flexShrink: 0 }} />
                   <span className="text-sm" style={{ color: '#94A3B8' }}>
-                    {lang === 'ar' ? settings.address_ar || settings.address : settings.address_en || settings.address}
+                    {lang === 'ar' ? settings.address_ar : (settings.address_en || settings.address_ar)}
                   </span>
                 </li>
               )}
@@ -155,9 +147,50 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Social Media */}
+        {(settings?.facebook_url || settings?.instagram_url || settings?.telegram_url || settings?.twitter_url || settings?.youtube_url) && (
+          <div className="mt-8 pt-6 flex flex-wrap gap-3" style={{ borderTop: '1px solid #162440' }}>
+            {settings.facebook_url && (
+              <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#162440' }}>
+                <Facebook size={16} style={{ color: '#94A3B8' }} />
+              </a>
+            )}
+            {settings.instagram_url && (
+              <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#162440' }}>
+                <Instagram size={16} style={{ color: '#94A3B8' }} />
+              </a>
+            )}
+            {settings.telegram_url && (
+              <a href={settings.telegram_url} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#162440' }}>
+                <Send size={16} style={{ color: '#94A3B8' }} />
+              </a>
+            )}
+            {settings.twitter_url && (
+              <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#162440' }}>
+                <Twitter size={16} style={{ color: '#94A3B8' }} />
+              </a>
+            )}
+            {settings.youtube_url && (
+              <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer"
+                className="w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#162440' }}>
+                <Youtube size={16} style={{ color: '#94A3B8' }} />
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Bottom bar */}
         <div
-          className="mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm"
+          className="mt-6 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm"
           style={{ borderTop: '1px solid #162440', color: '#94A3B8' }}
         >
           <span>

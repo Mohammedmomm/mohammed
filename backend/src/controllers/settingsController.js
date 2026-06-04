@@ -1,9 +1,9 @@
 const pool = require('../config/db');
 
 const PUBLIC_KEYS = [
-  'site_name_ar', 'site_name_en', 'whatsapp_number', 'phone_number',
+  'site_name_ar', 'site_name_en', 'whatsapp_number', 'phone_number', 'email',
   'address_ar', 'address_en', 'logo_url', 'facebook_url', 'instagram_url',
-  'telegram_url', 'products_per_page', 'similar_products_count',
+  'telegram_url', 'twitter_url', 'youtube_url', 'products_per_page', 'similar_products_count',
 ];
 
 const getPublic = async (req, res, next) => {

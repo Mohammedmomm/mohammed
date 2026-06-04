@@ -127,6 +127,7 @@ const Settings = () => {
               {/* keys match backend PUBLIC_KEYS */}
               <Field label={t('settings.whatsapp')} name="whatsapp_number" value={form.whatsapp_number} onChange={update} placeholder="+963912345678" dir="ltr" />
               <Field label={t('settings.phone')} name="phone_number" value={form.phone_number} onChange={update} placeholder="+963112345678" dir="ltr" />
+              <Field label="البريد الإلكتروني / Email" name="email" value={form.email} onChange={update} placeholder="info@example.com" dir="ltr" />
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-1.5 block">{t('settings.address')} (عربي)</label>
                 <textarea value={form.address_ar || ''} onChange={(e) => update('address_ar', e.target.value)} rows={3} className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm resize-none" dir="rtl" placeholder="دمشق، سوريا" />
