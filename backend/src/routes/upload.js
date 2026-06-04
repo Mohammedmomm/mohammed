@@ -1,9 +1,25 @@
 const router = require('express').Router();
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const auth = require('../middleware/auth');
-const { uploadToSupabase } = require('../utils/uploadHelper');
 
-const storage = multer.memoryStorage();
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = crypto.randomBytes(16).toString('hex');
+    cb(null, `${name}${ext}`);
+  },
+});
+
 const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -16,39 +32,24 @@ const upload = multer({
   },
 });
 
-router.post('/image', auth, upload.single('image'), async (req, res, next) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
-    }
-    const folder = req.query.folder || 'general';
-    const { url, path } = await uploadToSupabase(
-      req.file.buffer,
-      req.file.originalname,
-      req.file.mimetype,
-      folder
-    );
-    res.json({ success: true, data: { url, path } });
-  } catch (err) {
-    next(err);
+const getBaseUrl = (req) => `${req.protocol}://${req.get('host')}`;
+
+router.post('/image', auth, upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'No file uploaded' });
   }
+  const url = `${getBaseUrl(req)}/uploads/${req.file.filename}`;
+  res.json({ success: true, data: { url } });
 });
 
-router.post('/images', auth, upload.array('images', 10), async (req, res, next) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ success: false, error: 'No files uploaded' });
-    }
-    const folder = req.query.folder || 'general';
-    const results = [];
-    for (const file of req.files) {
-      const { url, path } = await uploadToSupabase(file.buffer, file.originalname, file.mimetype, folder);
-      results.push({ url, path, originalname: file.originalname });
-    }
-    res.json({ success: true, data: results });
-  } catch (err) {
-    next(err);
+router.post('/images', auth, upload.array('images', 10), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, error: 'No files uploaded' });
   }
+  const results = req.files.map((file) => ({
+    url: `${getBaseUrl(req)}/uploads/${file.filename}`,
+  }));
+  res.json({ success: true, data: results });
 });
 
 module.exports = router;

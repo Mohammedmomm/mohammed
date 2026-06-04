@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { X, Star, Image as ImageIcon, Link, Plus } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Star, Image as ImageIcon, Link, Plus, Upload } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import axiosInstance from '../../api/axiosInstance'
 
 const ImageUpload = ({
   onUpload,
@@ -11,6 +12,9 @@ const ImageUpload = ({
 }) => {
   const { t } = useTranslation()
   const [urlInput, setUrlInput] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [tab, setTab] = useState('url') // 'url' | 'file'
+  const inputRef = useRef(null)
 
   const addUrl = () => {
     const url = urlInput.trim()
@@ -19,34 +23,111 @@ const ImageUpload = ({
     setUrlInput('')
   }
 
+  const handleFiles = async (files) => {
+    if (!files || files.length === 0) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await axiosInstance.post('/upload/image', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        const url = res.data?.data?.url
+        if (url) onUpload?.(url)
+      }
+    } catch (err) {
+      console.error('Upload failed', err)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <div>
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 relative">
-          <Link size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addUrl())}
-            placeholder="https://example.com/image.jpg"
-            className="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm"
-            dir="ltr"
-          />
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4 w-fit">
         <button
           type="button"
-          onClick={addUrl}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium"
-          style={{ backgroundColor: '#1E6FBF' }}
+          onClick={() => setTab('url')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'url' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+          }`}
         >
-          <Plus size={15} />
-          إضافة
+          <Link size={14} />
+          رابط URL
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('file')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            tab === 'file' ? 'bg-white shadow text-blue-600' : 'text-gray-500'
+          }`}
+        >
+          <Upload size={14} />
+          رفع من الجهاز
         </button>
       </div>
 
+      {/* URL Tab */}
+      {tab === 'url' && (
+        <div className="flex gap-2 mb-4">
+          <div className="flex-1 relative">
+            <Link size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addUrl())}
+              placeholder="https://example.com/image.jpg"
+              className="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm"
+              dir="ltr"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addUrl}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium"
+            style={{ backgroundColor: '#1E6FBF' }}
+          >
+            <Plus size={15} />
+            إضافة
+          </button>
+        </div>
+      )}
+
+      {/* File Tab */}
+      {tab === 'file' && (
+        <div
+          className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center cursor-pointer hover:border-blue-300 hover:bg-gray-50 transition-all mb-4"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            multiple={multiple}
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+          <div className="flex flex-col items-center gap-2">
+            {uploading ? (
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Upload size={32} className="text-gray-400" />
+            )}
+            <p className="text-sm text-gray-500">
+              {uploading ? 'جاري الرفع...' : 'اسحب صورة هنا أو اضغط للاختيار'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Images Grid */}
       {currentImages.length > 0 ? (
-        <div className="grid grid-cols-4 gap-3 mt-2">
+        <div className="grid grid-cols-4 gap-3">
           {currentImages.map((img, idx) => (
             <div
               key={idx}
@@ -78,7 +159,6 @@ const ImageUpload = ({
                     type="button"
                     onClick={() => onSetPrimary?.(idx)}
                     className="bg-white/90 text-blue-600 rounded-lg p-1.5 hover:bg-white"
-                    title={t('products.setPrimary')}
                   >
                     <Star size={14} />
                   </button>
@@ -95,8 +175,8 @@ const ImageUpload = ({
           ))}
         </div>
       ) : (
-        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
-          الصق رابط صورة في الحقل أعلاه ثم اضغط إضافة
+        <div className="border border-dashed border-gray-200 rounded-xl p-4 text-center text-gray-400 text-xs">
+          لا توجد صور بعد
         </div>
       )}
     </div>
