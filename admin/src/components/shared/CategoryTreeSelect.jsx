@@ -72,7 +72,7 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
         <ChevronDown size={16} className="text-gray-400" />
       </button>
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-auto">
+        <div className="absolute z-[999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={14} className="text-gray-400" />

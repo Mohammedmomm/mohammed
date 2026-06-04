@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Save, GripVertical } from 'lucide-react'
+import { Plus, Trash2, Save, GripVertical, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PageHeader from '../components/shared/PageHeader'
 import axiosInstance from '../api/axiosInstance'
@@ -16,7 +16,6 @@ const SpecTemplates = () => {
   const [loadingFields, setLoadingFields] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // fetch flat categories on mount
   useEffect(() => {
     const fetchCats = async () => {
       setLoadingCats(true)
@@ -32,13 +31,19 @@ const SpecTemplates = () => {
     fetchCats()
   }, [])
 
-  // fetch templates when category changes
   const fetchTemplates = useCallback(async (catId) => {
     if (!catId) return
     setLoadingFields(true)
     try {
-      const res = await axiosInstance.get(`/spec-templates/category/${catId}`)
-      setFields(res.data.data || [])
+      const res = await axiosInstance.get(`/specifications/templates/category/${catId}`)
+      const rows = res.data.data || []
+      // parse options if stored as JSON string
+      setFields(rows.map((r) => ({
+        ...r,
+        options: Array.isArray(r.options)
+          ? r.options
+          : r.options ? JSON.parse(r.options) : [],
+      })))
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تحميل القوالب')
       setFields([])
@@ -53,7 +58,16 @@ const SpecTemplates = () => {
   }
 
   const addField = () => {
-    setFields((prev) => [...prev, { _new: true, _tempId: Date.now(), name_ar: '', name_en: '', type: 'text', unit: '', required: false }])
+    setFields((prev) => [...prev, {
+      _new: true,
+      _tempId: Date.now(),
+      label_ar: '',
+      label_en: '',
+      field_type: 'text',
+      unit: '',
+      is_required: false,
+      options: [],
+    }])
   }
 
   const updateField = (identifier, key, val) => {
@@ -63,13 +77,40 @@ const SpecTemplates = () => {
     }))
   }
 
+  const addOption = (identifier) => {
+    setFields((prev) => prev.map((f) => {
+      const id = f._tempId || f.id
+      if (id !== identifier) return f
+      return { ...f, options: [...(f.options || []), ''] }
+    }))
+  }
+
+  const updateOption = (identifier, idx, val) => {
+    setFields((prev) => prev.map((f) => {
+      const id = f._tempId || f.id
+      if (id !== identifier) return f
+      const opts = [...(f.options || [])]
+      opts[idx] = val
+      return { ...f, options: opts }
+    }))
+  }
+
+  const removeOption = (identifier, idx) => {
+    setFields((prev) => prev.map((f) => {
+      const id = f._tempId || f.id
+      if (id !== identifier) return f
+      const opts = (f.options || []).filter((_, i) => i !== idx)
+      return { ...f, options: opts }
+    }))
+  }
+
   const deleteField = async (f) => {
     if (f._new) {
       setFields((prev) => prev.filter((x) => (x._tempId || x.id) !== (f._tempId || f.id)))
       return
     }
     try {
-      await axiosInstance.delete(`/spec-templates/${f.id}`)
+      await axiosInstance.delete(`/specifications/templates/${f.id}`)
       setFields((prev) => prev.filter((x) => x.id !== f.id))
       toast.success('تم الحذف')
     } catch (err) {
@@ -77,23 +118,29 @@ const SpecTemplates = () => {
     }
   }
 
+  const generateFieldKey = (labelEn) =>
+    labelEn.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+
   const handleSave = async () => {
     if (!selectedCat) return
     setSaving(true)
     try {
       for (const f of fields) {
+        const fieldKey = f.field_key || generateFieldKey(f.label_en) || `field_${Date.now()}`
         const payload = {
-          name_ar: f.name_ar,
-          name_en: f.name_en,
-          type: f.type,
-          unit: f.unit,
-          required: f.required,
-          category_id: selectedCat,
+          field_key: fieldKey,
+          label_ar: f.label_ar,
+          label_en: f.label_en,
+          field_type: f.field_type,
+          unit: f.unit || '',
+          is_required: f.is_required,
+          options: f.field_type === 'select' ? (f.options || []).filter(Boolean) : null,
+          sort_order: f.sort_order || 0,
         }
         if (f._new) {
-          await axiosInstance.post('/spec-templates', payload)
+          await axiosInstance.post(`/specifications/templates/category/${selectedCat}`, payload)
         } else {
-          await axiosInstance.put(`/spec-templates/${f.id}`, payload)
+          await axiosInstance.put(`/specifications/templates/${f.id}`, payload)
         }
       }
       toast.success(t('specTemplates.templateSaved'))
@@ -117,7 +164,7 @@ const SpecTemplates = () => {
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-semibold text-gray-800 text-sm">{t('specTemplates.selectCategory')}</h3>
           </div>
-          <div className="py-2">
+          <div className="py-2 max-h-[60vh] overflow-y-auto">
             {loadingCats ? (
               <div className="text-center py-6 text-gray-400 text-sm">{t('common.loading')}</div>
             ) : categories.map((c) => (
@@ -193,59 +240,97 @@ const SpecTemplates = () => {
                       {fields.map((field) => {
                         const identifier = field._tempId || field.id
                         return (
-                          <tr key={identifier} className="border-b border-gray-50">
-                            <td className="px-4 py-2.5">
-                              <GripVertical size={14} className="text-gray-300 cursor-grab" />
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <input
-                                value={field.name_ar}
-                                onChange={(e) => updateField(identifier, 'name_ar', e.target.value)}
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
-                                dir="rtl"
-                              />
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <input
-                                value={field.name_en}
-                                onChange={(e) => updateField(identifier, 'name_en', e.target.value)}
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
-                                dir="ltr"
-                              />
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <select
-                                value={field.type}
-                                onChange={(e) => updateField(identifier, 'type', e.target.value)}
-                                className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
-                              >
-                                {FIELD_TYPES.map((ft) => (
-                                  <option key={ft} value={ft}>{t(`specTemplates.fieldTypes.${ft}`)}</option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <input
-                                value={field.unit}
-                                onChange={(e) => updateField(identifier, 'unit', e.target.value)}
-                                className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
-                                placeholder="م"
-                              />
-                            </td>
-                            <td className="px-4 py-2.5 text-center">
-                              <input
-                                type="checkbox"
-                                checked={field.required}
-                                onChange={(e) => updateField(identifier, 'required', e.target.checked)}
-                                className="rounded border-gray-300 text-blue-500"
-                              />
-                            </td>
-                            <td className="px-4 py-2.5">
-                              <button onClick={() => deleteField(field)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
-                                <Trash2 size={14} />
-                              </button>
-                            </td>
-                          </tr>
+                          <>
+                            <tr key={identifier} className="border-b border-gray-50">
+                              <td className="px-4 py-2.5">
+                                <GripVertical size={14} className="text-gray-300 cursor-grab" />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <input
+                                  value={field.label_ar}
+                                  onChange={(e) => updateField(identifier, 'label_ar', e.target.value)}
+                                  className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+                                  dir="rtl"
+                                />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <input
+                                  value={field.label_en}
+                                  onChange={(e) => updateField(identifier, 'label_en', e.target.value)}
+                                  className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+                                  dir="ltr"
+                                />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <select
+                                  value={field.field_type}
+                                  onChange={(e) => updateField(identifier, 'field_type', e.target.value)}
+                                  className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white"
+                                >
+                                  {FIELD_TYPES.map((ft) => (
+                                    <option key={ft} value={ft}>{t(`specTemplates.fieldTypes.${ft}`)}</option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <input
+                                  value={field.unit}
+                                  onChange={(e) => updateField(identifier, 'unit', e.target.value)}
+                                  className="w-20 px-2 py-1.5 border border-gray-200 rounded-lg text-sm"
+                                  placeholder="م"
+                                />
+                              </td>
+                              <td className="px-4 py-2.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={field.is_required}
+                                  onChange={(e) => updateField(identifier, 'is_required', e.target.checked)}
+                                  className="rounded border-gray-300 text-blue-500"
+                                />
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <button onClick={() => deleteField(field)} className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                            {field.field_type === 'select' && (
+                              <tr key={`${identifier}-opts`} className="border-b border-gray-100 bg-blue-50/30">
+                                <td />
+                                <td colSpan={6} className="px-4 py-2">
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="text-xs text-gray-500 font-medium">الخيارات:</span>
+                                    {(field.options || []).map((opt, idx) => (
+                                      <div key={idx} className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg px-2 py-1">
+                                        <input
+                                          value={opt}
+                                          onChange={(e) => updateOption(identifier, idx, e.target.value)}
+                                          className="text-xs outline-none w-20"
+                                          placeholder="خيار..."
+                                          dir="auto"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => removeOption(identifier, idx)}
+                                          className="text-red-400 hover:text-red-600"
+                                        >
+                                          <X size={10} />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => addOption(identifier)}
+                                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 border border-dashed border-blue-300 rounded-lg px-2 py-1"
+                                    >
+                                      <Plus size={10} />
+                                      إضافة خيار
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
                         )
                       })}
                     </tbody>

@@ -369,7 +369,7 @@ const ProductForm = () => {
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white"
                         >
                           <option value="">اختر...</option>
-                          {(tmpl.options || []).map((opt) => (
+                          {(Array.isArray(tmpl.options) ? tmpl.options : JSON.parse(tmpl.options || '[]')).map((opt) => (
                             <option key={opt} value={opt}>{opt}</option>
                           ))}
                         </select>
