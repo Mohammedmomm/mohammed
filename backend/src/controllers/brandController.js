@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { generateSlug, ensureUniqueSlug } = require('../utils/slugify');
 const { paginate, paginateResponse } = require('../utils/pagination');
+const { createNotification } = require('./notificationController');
 
 const getAll = async (req, res, next) => {
   try {
@@ -63,7 +64,9 @@ const create = async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [name, name_ar || null, slug, logo_url || null, description_ar || null, description_en || null, sort_order || 0]
     );
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const brand = result.rows[0];
+    await createNotification('brand_created', 'ماركة جديدة', `تم إضافة ماركة "${brand.name_ar || brand.name}"`, 'brand', brand.id);
+    res.status(201).json({ success: true, data: brand });
   } catch (err) {
     next(err);
   }
@@ -91,7 +94,9 @@ const update = async (req, res, next) => {
        WHERE id = $8 RETURNING *`,
       [name, name_ar, logo_url, description_ar, description_en, sort_order, is_active, id]
     );
-    res.json({ success: true, data: result.rows[0] });
+    const brand = result.rows[0];
+    await createNotification('brand_updated', 'تحديث ماركة', `تم تعديل ماركة "${brand.name_ar || brand.name}"`, 'brand', brand.id);
+    res.json({ success: true, data: brand });
   } catch (err) {
     next(err);
   }
@@ -105,6 +110,7 @@ const deleteBrand = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Brand not found' });
     }
     await pool.query('DELETE FROM brands WHERE id = $1', [id]);
+    await createNotification('brand_deleted', 'حذف ماركة', `تم حذف الماركة #${id}`, 'brand', id);
     res.json({ success: true, data: { message: 'Brand deleted' } });
   } catch (err) {
     next(err);

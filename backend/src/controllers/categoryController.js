@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const { generateSlug, ensureUniqueSlug } = require('../utils/slugify');
 const { paginate, paginateResponse } = require('../utils/pagination');
+const { createNotification } = require('./notificationController');
 
 const buildTree = (categories, parentId = null) => {
   return categories
@@ -156,7 +157,9 @@ const create = async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [name_ar, name_en, slug, parent_id || null, icon || null, description_ar || null, description_en || null, sort_order || 0]
     );
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const cat = result.rows[0];
+    await createNotification('category_created', 'تصنيف جديد', `تم إضافة تصنيف "${cat.name_ar}"`, 'category', cat.id);
+    res.status(201).json({ success: true, data: cat });
   } catch (err) {
     next(err);
   }
@@ -186,7 +189,9 @@ const update = async (req, res, next) => {
       [name_ar, name_en, parent_id !== undefined ? parent_id : existing.rows[0].parent_id,
        icon, description_ar, description_en, sort_order, is_active, id]
     );
-    res.json({ success: true, data: result.rows[0] });
+    const cat = result.rows[0];
+    await createNotification('category_updated', 'تحديث تصنيف', `تم تعديل تصنيف "${cat.name_ar}"`, 'category', cat.id);
+    res.json({ success: true, data: cat });
   } catch (err) {
     next(err);
   }
@@ -200,6 +205,7 @@ const deleteCategory = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Category not found' });
     }
     await pool.query('DELETE FROM categories WHERE id = $1', [id]);
+    await createNotification('category_deleted', 'حذف تصنيف', `تم حذف التصنيف #${id}`, 'category', id);
     res.json({ success: true, data: { message: 'Category deleted' } });
   } catch (err) {
     next(err);

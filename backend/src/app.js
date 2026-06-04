@@ -17,6 +17,7 @@ const adRoutes = require('./routes/ads');
 const exchangeRateRoutes = require('./routes/exchangeRate');
 const settingsRoutes = require('./routes/settings');
 const uploadRoutes = require('./routes/upload');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/ads', adRoutes);
 app.use('/api/exchange-rate', exchangeRateRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404
 app.use(notFound);

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { createNotification } = require('./notificationController');
 const { generateSlug, ensureUniqueSlug } = require('../utils/slugify');
 const { calculatePrices, getCurrentRate } = require('../utils/priceCalc');
 const { paginate, paginateResponse } = require('../utils/pagination');
@@ -304,7 +305,9 @@ const create = async (req, res, next) => {
         tags || null, meta_keywords || null,
       ]
     );
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const p = result.rows[0];
+    await createNotification('product_created', 'منتج جديد', `تم إضافة "${p.name_ar}"`, 'product', p.id);
+    res.status(201).json({ success: true, data: p });
   } catch (err) {
     next(err);
   }
@@ -355,7 +358,9 @@ const update = async (req, res, next) => {
         tags, meta_keywords, id,
       ]
     );
-    res.json({ success: true, data: result.rows[0] });
+    const p = result.rows[0];
+    await createNotification('product_updated', 'تحديث منتج', `تم تعديل "${p.name_ar}"`, 'product', p.id);
+    res.json({ success: true, data: p });
   } catch (err) {
     next(err);
   }
@@ -369,6 +374,7 @@ const deleteProduct = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    await createNotification('product_deleted', 'حذف منتج', `تم حذف المنتج #${id}`, 'product', id);
     res.json({ success: true, data: { message: 'Product deleted' } });
   } catch (err) {
     next(err);
