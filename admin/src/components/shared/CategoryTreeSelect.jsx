@@ -30,7 +30,9 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [categories, setCategories] = useState([])
+  const [dropdownStyle, setDropdownStyle] = useState({})
   const ref = useRef(null)
+  const btnRef = useRef(null)
 
   useEffect(() => {
     const load = async () => {
@@ -50,6 +52,32 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const handleOpen = () => {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const dropH = 256
+      if (spaceBelow < dropH) {
+        setDropdownStyle({
+          position: 'fixed',
+          top: rect.top - dropH - 4,
+          left: rect.left,
+          width: rect.width,
+          zIndex: 9999,
+        })
+      } else {
+        setDropdownStyle({
+          position: 'fixed',
+          top: rect.bottom + 4,
+          left: rect.left,
+          width: rect.width,
+          zIndex: 9999,
+        })
+      }
+    }
+    setOpen(!open)
+  }
+
   const filtered = categories.filter(
     (c) =>
       !search ||
@@ -62,8 +90,9 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={handleOpen}
         className="w-full flex items-center justify-between px-3 py-2 border border-gray-200 rounded-lg bg-white text-sm hover:border-blue-400 transition-colors"
       >
         <span className={selected ? 'text-gray-800' : 'text-gray-400'}>
@@ -72,8 +101,11 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
         <ChevronDown size={16} className="text-gray-400" />
       </button>
       {open && (
-        <div className="absolute z-[999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-          <div className="p-2 border-b border-gray-100">
+        <div
+          style={{ ...dropdownStyle, maxHeight: 256 }}
+          className="bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto"
+        >
+          <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
             <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 rounded-lg">
               <Search size={14} className="text-gray-400" />
               <input
