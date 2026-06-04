@@ -361,7 +361,6 @@ const ProductForm = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         {tmpl.label_ar}
                         {tmpl.unit && <span className="text-gray-400 text-xs mr-1">({tmpl.unit})</span>}
-                        {tmpl.is_required && <span className="text-red-500 mr-1">*</span>}
                       </label>
                       {tmpl.field_type === 'select' ? (
                         <select
