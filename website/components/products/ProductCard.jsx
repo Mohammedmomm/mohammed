@@ -12,12 +12,16 @@ export default function ProductCard({ product, lang = 'ar', currency = 'SYP', ex
 
   const hasDetails = product.has_details !== false
   const name = getName(product, lang)
-  const brandName = product.brand
-    ? (lang === 'ar' ? product.brand.name_ar || product.brand.name_en : product.brand.name_en || product.brand.name_ar) || product.brand.name
-    : null
+  const brandName = lang === 'ar'
+    ? (product.brand_name_ar || product.brand_name || null)
+    : (product.brand_name || product.brand_name_ar || null)
 
-  const primaryImage = product.images?.find((i) => i.is_primary) || product.images?.[0]
-  const imageUrl = primaryImage?.url || product.image_url || null
+  const imageUrl = product.primary_image
+    || product.images?.find((i) => i.is_primary)?.image_url
+    || product.images?.find((i) => i.is_primary)?.url
+    || product.images?.[0]?.image_url
+    || product.images?.[0]?.url
+    || null
 
   const isAvailable = product.is_available !== false && product.stock !== 0
   const isFeatured = product.is_featured

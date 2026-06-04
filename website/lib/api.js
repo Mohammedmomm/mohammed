@@ -38,7 +38,10 @@ export async function getCategoryProducts(slug, params = {}) {
 
 // Products
 export async function getProducts(params = {}) {
-  const res = await api.get('/products', { params })
+  const { q, ...rest } = params
+  const apiParams = { ...rest }
+  if (q) apiParams.search = q
+  const res = await api.get('/products', { params: apiParams })
   const d = res.data?.data
   return {
     products: d?.data || [],
@@ -86,25 +89,10 @@ export async function getExchangeRate() {
   return res.data?.data
 }
 
-// Analytics
-export async function trackPageView(path, referrer) {
-  const res = await api.post('/analytics/pageview', { path, referrer })
-  return res.data
-}
-
-export async function trackSearch(query, resultsCount) {
-  const res = await api.post('/analytics/search', { query, results_count: resultsCount })
-  return res.data
-}
-
-export async function trackProductView(id) {
-  const res = await api.post(`/analytics/product-view/${id}`)
-  return res.data
-}
-
-export async function trackAdClick(id) {
-  const res = await api.post(`/analytics/ad-click/${id}`)
-  return res.data
-}
+// Analytics stubs (backend not yet implemented)
+export async function trackPageView() {}
+export async function trackSearch() {}
+export async function trackProductView() {}
+export async function trackAdClick() {}
 
 export default api

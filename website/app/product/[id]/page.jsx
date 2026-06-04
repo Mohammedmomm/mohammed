@@ -76,11 +76,16 @@ export default function ProductPage() {
 
   const name = getName(product, lang)
   const description = getDescription(product, lang)
-  const isAvailable = product.is_available !== false && product.stock !== 0
-  const brandName = product.brand ? getName(product.brand, lang) : null
+  const isAvailable = product.is_available !== false
+  const brandName = lang === 'ar'
+    ? (product.brand_name_ar || product.brand_name || null)
+    : (product.brand_name || product.brand_name_ar || null)
   const images = product.images || []
   const variants = product.variants || []
   const specs = product.specifications || product.specs || []
+
+  const categoryName = lang === 'ar' ? product.category_name_ar : (product.category_name_en || product.category_name_ar)
+  const categorySlug = product.category_slug
 
   const activePriceSYP = selectedVariant?.price_syp ?? product.price_syp
   const activePriceUSD = selectedVariant?.price_usd ?? product.price_usd
@@ -98,7 +103,7 @@ export default function ProductPage() {
           <Breadcrumb
             items={[
               { label: lang === 'ar' ? 'الرئيسية' : 'Home', href: '/' },
-              ...(product.category ? [{ label: getName(product.category, lang), href: `/category/${product.category.slug}` }] : []),
+              ...(categoryName ? [{ label: categoryName, href: `/category/${categorySlug}` }] : []),
               { label: name, href: '#' },
             ]}
           />
