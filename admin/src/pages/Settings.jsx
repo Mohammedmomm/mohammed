@@ -22,8 +22,13 @@ const Settings = () => {
   const fetchSettings = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await axiosInstance.get('/settings/admin')
-      setForm(res.data.data || {})
+      const res = await axiosInstance.get('/settings')
+      const raw = res.data.data || []
+      // Convert [{key, value}] array to {key: value} object
+      const obj = Array.isArray(raw)
+        ? raw.reduce((acc, row) => { acc[row.key] = row.value; return acc }, {})
+        : raw
+      setForm(obj)
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل تحميل الإعدادات')
     } finally {
@@ -38,7 +43,7 @@ const Settings = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await axiosInstance.put('/settings', form)
+      await axiosInstance.put('/settings', { settings: form })
       toast.success(t('settings.settingsSaved'))
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل حفظ الإعدادات')
