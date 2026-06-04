@@ -38,7 +38,8 @@ const CategoryTreeSelect = ({ value, onChange, placeholder }) => {
     const load = async () => {
       try {
         const res = await getTree()
-        setCategories(flattenTree(res.data.categories || res.data))
+        const list = res.data?.data || res.data?.categories || []
+        setCategories(flattenTree(Array.isArray(list) ? list : []))
       } catch {
         setCategories(flattenTree(mockCategories))
       }
