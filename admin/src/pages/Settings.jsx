@@ -43,7 +43,10 @@ const Settings = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await axiosInstance.put('/settings', { settings: form })
+      const sanitized = Object.fromEntries(
+        Object.entries(form).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v)])
+      )
+      await axiosInstance.put('/settings', { settings: sanitized })
       toast.success(t('settings.settingsSaved'))
     } catch (err) {
       toast.error(err?.response?.data?.message || 'فشل حفظ الإعدادات')
