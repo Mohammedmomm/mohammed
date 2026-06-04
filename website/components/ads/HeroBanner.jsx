@@ -19,36 +19,22 @@ export default function HeroBanner() {
 
   if (!ad) return null
 
-  function handleClick() {
-    trackAdClick(ad._id || ad.id)
-  }
-
   return (
-    <div className="w-full overflow-hidden rounded-xl mx-auto" style={{ maxHeight: 280, maxWidth: 900 }}>
+    <div className="max-w-7xl mx-auto px-4 py-3">
       <a
         href={ad.link_url || '#'}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={handleClick}
-        className="block relative w-full"
-        style={{ paddingTop: '22%', minHeight: 140 }}
+        onClick={() => trackAdClick(ad._id || ad.id)}
+        className="block relative w-full rounded-xl overflow-hidden"
+        style={{ height: 160 }}
       >
         {ad.image_url ? (
-          <Image
-            src={ad.image_url}
-            alt={ad.title || 'Banner'}
-            fill
-            className="object-cover"
-            priority
-          />
+          <Image src={ad.image_url} alt={ad.title || 'Banner'} fill className="object-cover" priority />
         ) : (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #0F1E35, #162440)' }}
-          >
-            <span className="text-2xl font-bold" style={{ color: '#00D4FF' }}>
-              {ad.title || ''}
-            </span>
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #0F1E35, #162440)' }}>
+            <span className="text-xl font-bold" style={{ color: '#00D4FF' }}>{ad.title || ''}</span>
           </div>
         )}
       </a>
