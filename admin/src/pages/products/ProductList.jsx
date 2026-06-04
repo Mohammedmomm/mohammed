@@ -41,7 +41,10 @@ const ProductList = () => {
   // Fetch filter options
   useEffect(() => {
     axiosInstance.get('/categories/flat').then((res) => setCategories(res.data.data || [])).catch(() => {})
-    axiosInstance.get('/brands').then((res) => setBrands(res.data.data || [])).catch(() => {})
+    axiosInstance.get('/brands?limit=100').then((res) => {
+      const d = res.data?.data
+      setBrands(Array.isArray(d) ? d : (d?.data || []))
+    }).catch(() => {})
   }, [])
 
   const fetchProducts = useCallback(async () => {
