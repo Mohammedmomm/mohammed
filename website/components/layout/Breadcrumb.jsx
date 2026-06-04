@@ -14,11 +14,19 @@ export default function Breadcrumb({ items = [] }) {
         const isLast = index === items.length - 1
         return (
           <span key={index} className="flex items-center gap-1">
-            {index > 0 && <ChevronIcon size={13} style={{ color: '#D5D9D9', flexShrink: 0 }} />}
+            {index > 0 && (
+              <ChevronIcon size={14} style={{ color: '#94A3B8', flexShrink: 0 }} />
+            )}
             {isLast ? (
-              <span style={{ color: '#0F1111' }} className="font-medium">{item.label}</span>
+              <span style={{ color: '#F8F9FA' }} className="font-medium">
+                {item.label}
+              </span>
             ) : (
-              <Link href={item.href} className="hover:underline transition-colors" style={{ color: '#007185' }}>
+              <Link
+                href={item.href}
+                className="transition-colors hover:text-cyan-DEFAULT"
+                style={{ color: '#94A3B8' }}
+              >
                 {item.label}
               </Link>
             )}

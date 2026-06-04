@@ -24,20 +24,31 @@ export default function HeroBanner() {
   }
 
   return (
-    <div className="w-full overflow-hidden" style={{ maxHeight: 300 }}>
+    <div className="w-full overflow-hidden rounded-xl mx-auto" style={{ maxHeight: 280, maxWidth: 900 }}>
       <a
         href={ad.link_url || '#'}
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
         className="block relative w-full"
-        style={{ paddingTop: '20%', minHeight: 160 }}
+        style={{ paddingTop: '22%', minHeight: 140 }}
       >
         {ad.image_url ? (
-          <Image src={ad.image_url} alt={ad.title || 'Banner'} fill className="object-cover" priority />
+          <Image
+            src={ad.image_url}
+            alt={ad.title || 'Banner'}
+            fill
+            className="object-cover"
+            priority
+          />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#232F3E' }}>
-            <span className="text-2xl font-bold text-white">{ad.title || ''}</span>
+          <div
+            className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #0F1E35, #162440)' }}
+          >
+            <span className="text-2xl font-bold" style={{ color: '#00D4FF' }}>
+              {ad.title || ''}
+            </span>
           </div>
         )}
       </a>
