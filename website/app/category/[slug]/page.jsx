@@ -76,7 +76,7 @@ export default function CategoryPage() {
   const categoryName = category ? getName(category, lang) : ''
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A1628' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#EAEDED' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Breadcrumb */}
         <div className="mb-4">
@@ -90,7 +90,7 @@ export default function CategoryPage() {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold mb-4" style={{ color: '#F8F9FA' }}>
+        <h1 className="text-2xl font-bold mb-4" style={{ color: '#0F1111' }}>
           {categoryName || params.slug}
         </h1>
 
@@ -122,7 +122,7 @@ export default function CategoryPage() {
 
             {/* Count */}
             {!loading && (
-              <p className="text-sm mb-4" style={{ color: '#94A3B8' }}>
+              <p className="text-sm mb-4" style={{ color: '#565959' }}>
                 {lang === 'ar' ? `${total} منتج` : `${total} products`}
               </p>
             )}

@@ -52,7 +52,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0A1628' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#EAEDED' }}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-4">
           <Breadcrumb
@@ -64,8 +64,8 @@ export default function SearchPage() {
         </div>
 
         <div className="flex items-center gap-3 mb-6">
-          <Search size={24} style={{ color: '#00D4FF' }} />
-          <h1 className="text-2xl font-bold" style={{ color: '#F8F9FA' }}>
+          <Search size={24} style={{ color: '#FF9900' }} />
+          <h1 className="text-2xl font-bold" style={{ color: '#0F1111' }}>
             {q
               ? (lang === 'ar' ? `نتائج البحث عن: "${q}"` : `Search results for: "${q}"`)
               : (lang === 'ar' ? 'البحث' : 'Search')}
@@ -73,13 +73,13 @@ export default function SearchPage() {
         </div>
 
         {!loading && q && (
-          <p className="text-sm mb-6" style={{ color: '#94A3B8' }}>
+          <p className="text-sm mb-6" style={{ color: '#565959' }}>
             {lang === 'ar' ? `${total} نتيجة` : `${total} results`}
           </p>
         )}
 
         {!q ? (
-          <div className="text-center py-20" style={{ color: '#94A3B8' }}>
+          <div className="text-center py-20" style={{ color: '#565959' }}>
             {lang === 'ar' ? 'أدخل كلمة بحث للبدء' : 'Enter a search term to get started'}
           </div>
         ) : (
