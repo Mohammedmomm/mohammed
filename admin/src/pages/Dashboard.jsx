@@ -87,21 +87,21 @@ const Dashboard = () => {
         return fallback
       }
 
-      const totalProducts = getValue(results[0], (r) => r.data.data.total, 0)
-      const available = getValue(results[1], (r) => r.data.data.total, 0)
-      const categoriesCount = getValue(results[2], (r) => r.data.data.length, 0)
-      const brandsCount = getValue(results[3], (r) => r.data.data.length, 0)
-      const activeAds = getValue(results[4], (r) => r.data.data.filter((ad) => ad.is_active).length, 0)
+      const totalProducts = getValue(results[0], (r) => r.data.data.pagination?.total ?? r.data.data.total, 0)
+      const available = getValue(results[1], (r) => r.data.data.pagination?.total ?? r.data.data.total, 0)
+      const categoriesCount = getValue(results[2], (r) => (r.data.data?.length ?? r.data.data?.data?.length), 0)
+      const brandsCount = getValue(results[3], (r) => r.data.data.pagination?.total ?? r.data.data.data?.length ?? 0, 0)
+      const activeAds = getValue(results[4], (r) => (r.data.data || []).filter((ad) => ad.is_active).length, 0)
       const exchangeRateRaw = getValue(results[5], (r) => r.data.data.usd_to_syp, null)
       const exchangeRate = exchangeRateRaw != null
         ? `${Number(exchangeRateRaw).toLocaleString()} ل.س`
         : '-'
 
-      const rawProducts = getValue(results[6], (r) => r.data.data.products, []) || []
+      const rawProducts = getValue(results[6], (r) => r.data.data.data, []) || []
       const mappedProducts = rawProducts.map((p, i) => ({
         rank: i + 1,
         name_ar: p.name_ar || p.name || '-',
-        category: p.category?.name_ar || p.category?.name || '-',
+        category: p.category_name_ar || p.category_name || '-',
         views: p.view_count || 0,
       }))
 
