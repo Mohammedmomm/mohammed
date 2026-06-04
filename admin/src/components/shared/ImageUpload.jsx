@@ -1,8 +1,6 @@
-import { useRef, useState } from 'react'
-import { Upload, X, Star, Image as ImageIcon } from 'lucide-react'
+import { useState } from 'react'
+import { X, Star, Image as ImageIcon, Link, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import toast from 'react-hot-toast'
-import axiosInstance from '../../api/axiosInstance'
 
 const ImageUpload = ({
   onUpload,
@@ -12,70 +10,43 @@ const ImageUpload = ({
   onSetPrimary,
 }) => {
   const { t } = useTranslation()
-  const inputRef = useRef(null)
-  const [uploading, setUploading] = useState(false)
-  const [dragging, setDragging] = useState(false)
+  const [urlInput, setUrlInput] = useState('')
 
-  const handleFiles = async (files) => {
-    if (!files || files.length === 0) return
-    setUploading(true)
-    try {
-      for (const file of Array.from(files)) {
-        const formData = new FormData()
-        formData.append('image', file)
-        const res = await axiosInstance.post('/upload/image', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-        onUpload?.(res.data.url || res.data.path)
-      }
-    } catch (err) {
-      // Use local URL as fallback for demo
-      for (const file of Array.from(files)) {
-        const url = URL.createObjectURL(file)
-        onUpload?.(url)
-      }
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    handleFiles(e.dataTransfer.files)
+  const addUrl = () => {
+    const url = urlInput.trim()
+    if (!url || !url.startsWith('http')) return
+    onUpload?.(url)
+    setUrlInput('')
   }
 
   return (
     <div>
-      <div
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-          dragging ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-        }`}
-        onClick={() => inputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-      >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          multiple={multiple}
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-        <div className="flex flex-col items-center gap-2">
-          {uploading ? (
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Upload size={32} className="text-gray-400" />
-          )}
-          <p className="text-sm text-gray-500">{t('products.dragDropImages')}</p>
+      <div className="flex gap-2 mb-4">
+        <div className="flex-1 relative">
+          <Link size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addUrl())}
+            placeholder="https://example.com/image.jpg"
+            className="w-full ps-9 pe-3 py-2.5 border border-gray-200 rounded-xl text-sm"
+            dir="ltr"
+          />
         </div>
+        <button
+          type="button"
+          onClick={addUrl}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-sm font-medium"
+          style={{ backgroundColor: '#1E6FBF' }}
+        >
+          <Plus size={15} />
+          إضافة
+        </button>
       </div>
 
-      {currentImages.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mt-4">
+      {currentImages.length > 0 ? (
+        <div className="grid grid-cols-4 gap-3 mt-2">
           {currentImages.map((img, idx) => (
             <div
               key={idx}
@@ -83,17 +54,15 @@ const ImageUpload = ({
                 img.is_primary || idx === 0 ? 'border-blue-500' : 'border-gray-200'
               }`}
             >
-              {img.url || typeof img === 'string' ? (
-                <img
-                  src={typeof img === 'string' ? img : img.url}
-                  alt=""
-                  className="w-full h-24 object-cover"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                    e.target.nextSibling.style.display = 'flex'
-                  }}
-                />
-              ) : null}
+              <img
+                src={typeof img === 'string' ? img : img.url}
+                alt=""
+                className="w-full h-24 object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  e.target.nextSibling.style.display = 'flex'
+                }}
+              />
               <div className="hidden w-full h-24 bg-gray-100 items-center justify-center">
                 <ImageIcon size={24} className="text-gray-400" />
               </div>
@@ -106,6 +75,7 @@ const ImageUpload = ({
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                 {!img.is_primary && idx !== 0 && (
                   <button
+                    type="button"
                     onClick={() => onSetPrimary?.(idx)}
                     className="bg-white/90 text-blue-600 rounded-lg p-1.5 hover:bg-white"
                     title={t('products.setPrimary')}
@@ -114,6 +84,7 @@ const ImageUpload = ({
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={() => onDelete?.(idx)}
                   className="bg-white/90 text-red-500 rounded-lg p-1.5 hover:bg-white"
                 >
@@ -122,6 +93,10 @@ const ImageUpload = ({
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-sm">
+          الصق رابط صورة في الحقل أعلاه ثم اضغط إضافة
         </div>
       )}
     </div>
