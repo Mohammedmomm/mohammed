@@ -24,14 +24,14 @@ export default function HeroBanner() {
   }
 
   return (
-    <div className="w-full overflow-hidden" style={{ maxHeight: 420 }}>
+    <div className="w-full overflow-hidden rounded-xl mx-auto" style={{ maxHeight: 280, maxWidth: 900 }}>
       <a
         href={ad.link_url || '#'}
         target="_blank"
         rel="noopener noreferrer"
         onClick={handleClick}
         className="block relative w-full"
-        style={{ paddingTop: '25%', minHeight: 180 }}
+        style={{ paddingTop: '22%', minHeight: 140 }}
       >
         {ad.image_url ? (
           <Image
