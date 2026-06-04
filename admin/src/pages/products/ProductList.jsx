@@ -132,7 +132,7 @@ const ProductList = () => {
     {
       key: 'price_usd',
       title: t('products.priceUSD'),
-      render: (val) => <span className="text-gray-500">${val?.toFixed(2)}</span>,
+      render: (val) => <span className="text-gray-500">${val ? Number(val).toFixed(2) : '0.00'}</span>,
     },
     {
       key: 'is_available',
