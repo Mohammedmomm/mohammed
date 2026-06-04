@@ -29,7 +29,7 @@ export default function ContactPage() {
   }
 
   const address = settings
-    ? (lang === 'ar' ? settings.address_ar || settings.address : settings.address_en || settings.address)
+    ? (lang === 'ar' ? settings.address_ar : settings.address_en || settings.address_ar)
     : null
 
   return (
@@ -57,9 +57,9 @@ export default function ContactPage() {
         {settings && (
           <div className="space-y-4">
             {/* WhatsApp */}
-            {settings.whatsapp && (
+            {settings.whatsapp_number && (
               <a
-                href={buildWhatsAppLink(settings.whatsapp, lang === 'ar' ? 'مرحباً، أريد الاستفسار' : 'Hello, I have an inquiry')}
+                href={buildWhatsAppLink(settings.whatsapp_number, lang === 'ar' ? 'مرحباً، أريد الاستفسار' : 'Hello, I have an inquiry')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-4 p-5 rounded-xl transition-all hover:scale-[1.02] block"
@@ -72,15 +72,15 @@ export default function ContactPage() {
                   <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>
                     WhatsApp
                   </p>
-                  <p className="font-bold text-lg" style={{ color: '#F8F9FA' }}>{settings.whatsapp}</p>
+                  <p className="font-bold text-lg" style={{ color: '#F8F9FA' }}>{settings.whatsapp_number}</p>
                 </div>
               </a>
             )}
 
             {/* Phone */}
-            {settings.phone && (
+            {settings.phone_number && (
               <a
-                href={`tel:${settings.phone}`}
+                href={`tel:${settings.phone_number}`}
                 className="flex items-center gap-4 p-5 rounded-xl transition-all hover:scale-[1.02] block"
                 style={{ backgroundColor: '#0F1E35', border: '1px solid #162440' }}
               >
@@ -91,7 +91,7 @@ export default function ContactPage() {
                   <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#94A3B8' }}>
                     {lang === 'ar' ? 'الهاتف' : 'Phone'}
                   </p>
-                  <p className="font-bold text-lg" style={{ color: '#F8F9FA' }}>{settings.phone}</p>
+                  <p className="font-bold text-lg" style={{ color: '#F8F9FA' }}>{settings.phone_number}</p>
                 </div>
               </a>
             )}

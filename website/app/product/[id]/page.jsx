@@ -95,6 +95,7 @@ export default function ProductPage() {
     : `Hello, I'd like to inquire about: ${name}`
   const whatsappLink = buildWhatsAppLink(settings?.whatsapp_number || settings?.phone_number || '', whatsappMessage)
 
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A1628' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -193,6 +194,7 @@ export default function ProductPage() {
 
             {/* WhatsApp CTA */}
             {(settings?.whatsapp_number || settings?.phone_number) && (
+
               <a
                 href={whatsappLink}
                 target="_blank"
