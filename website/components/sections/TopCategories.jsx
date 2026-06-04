@@ -1,31 +1,26 @@
 import Link from 'next/link'
-import { Grid3X3, ArrowLeft } from 'lucide-react'
 import CategoryCard from '@/components/categories/CategoryCard'
 
 export default function TopCategories({ categories = [], lang = 'ar' }) {
   if (!categories.length) return null
 
   return (
-    <section className="py-10 px-4" style={{ backgroundColor: '#0F1E35' }}>
+    <section className="py-6 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2" style={{ color: '#F8F9FA' }}>
-            <Grid3X3 size={22} style={{ color: '#00D4FF' }} />
-            {lang === 'ar' ? 'أبرز التصنيفات' : 'Top Categories'}
-          </h2>
-          <Link
-            href="/categories"
-            className="flex items-center gap-1 text-sm font-medium transition-opacity hover:opacity-80"
-            style={{ color: '#00D4FF' }}
-          >
-            {lang === 'ar' ? 'جميع التصنيفات' : 'All Categories'}
-            <ArrowLeft size={15} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {categories.slice(0, 8).map((cat, i) => (
-            <CategoryCard key={cat._id || cat.id} category={cat} lang={lang} index={i} />
-          ))}
+        <div className="bg-white rounded-md p-4 border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold" style={{ color: '#0F1111' }}>
+              {lang === 'ar' ? 'تسوّق حسب التصنيف' : 'Shop by Category'}
+            </h2>
+            <Link href="/categories" className="text-sm font-medium hover:underline" style={{ color: '#007185' }}>
+              {lang === 'ar' ? 'جميع التصنيفات' : 'See all'}
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+            {categories.slice(0, 8).map((cat, i) => (
+              <CategoryCard key={cat._id || cat.id} category={cat} lang={lang} index={i} />
+            ))}
+          </div>
         </div>
       </div>
     </section>

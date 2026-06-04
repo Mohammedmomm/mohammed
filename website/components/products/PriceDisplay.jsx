@@ -38,12 +38,12 @@ export default function PriceDisplay({
     <div className="flex flex-col gap-0.5">
       <span
         className={`font-bold ${isLg ? 'text-2xl' : 'text-base'}`}
-        style={{ color: '#FFD700' }}
+        style={{ color: '#B12704' }}
       >
         {p}
       </span>
       {s && (
-        <span className={`${isLg ? 'text-sm' : 'text-xs'}`} style={{ color: '#94A3B8' }}>
+        <span className={`${isLg ? 'text-sm' : 'text-xs'}`} style={{ color: '#565959' }}>
           {s}
         </span>
       )}
